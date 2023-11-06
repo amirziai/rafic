@@ -21,6 +21,7 @@ except ImportError:
 
 CLIP_MODEL_TYPE = "ViT-L/14@336px"
 MAX_N = 10
+IMAGE_PATH_BASE = "/root/data/laion/images"
 
 
 logger = logging.getLogger(__name__)
@@ -33,8 +34,10 @@ class CLIPSearch:
     `max_n` is the maximum number of items we want to return.
     Once the object is instantiated, we won't be able to search for more.
     """
+
     path: str
     max_n: int = MAX_N
+    _image_path_base: str = IMAGE_PATH_BASE
 
     def search_given_emb(self, emb: np.ndarray, n: int) -> t.List[str]:
         """
@@ -62,6 +65,13 @@ class CLIPSearch:
         """
         emb_text = self._get_text_emb(text=text)
         return self.search_given_emb(emb=emb_text, n=n)
+
+    def show_images_by_key(self, keys: t.List[str]) -> None:
+        from IPython.display import Image as JImage, display
+
+        for key in keys:
+            path = f"{self._image_path_base}/{key}.png"
+            display(JImage(path))
 
     @property
     def _embs(self) -> np.ndarray:
