@@ -104,7 +104,7 @@ class BirdsDataset(dataset.Dataset):
         images_support, images_query = [], []
         labels_support, labels_query = [], []
 
-        for label, class_idx in enumerate(class_idxs):
+        for class_idx in class_idxs:
             # get a class's examples and sample from them
             all_file_paths = glob.glob(
                 os.path.join(self._birds_folders[class_idx], '*.png')
@@ -115,6 +115,7 @@ class BirdsDataset(dataset.Dataset):
                 replace=False
             )
             images = [load_image(file_path) for file_path in sampled_file_paths]
+            label = int(self._birds_folders[class_idx].split('/')[-1].split('.')[0]) # get the label from the folder name
 
             # split sampled examples into support and query
             images_support.extend(images[:self._num_support])
