@@ -2,8 +2,6 @@
 import os
 import glob
 
-import google_drive_downloader as gdd
-import imageio
 import numpy as np
 import torch
 from torch.utils.data import dataset, sampler, dataloader
@@ -18,6 +16,7 @@ NUM_VAL_CLASSES = 10
 NUM_TEST_CLASSES = 60
 NUM_SAMPLES_PER_CLASS = 41
 
+
 def load_image(file_path):
     """Loads and transforms an Caltech-UCSD Birds-200-2011 image.
 
@@ -28,12 +27,14 @@ def load_image(file_path):
         a Tensor containing image data
             shape (3, 224, 224)
     """
-    transform = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
+    transform = transforms.Compose(
+        [
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ]
+    )
 
     image = Image.open(file_path)
     tensor = transform(image)
@@ -48,7 +49,8 @@ class BirdsDataset(dataset.Dataset):
     value is the instantiated task, which consists of sampled (image, label)
     pairs.
     """
-    _BASE_PATH = './data/birds'
+
+    _BASE_PATH = "./data/birds"
 
     def __init__(self, num_support, num_query):
         """Inits Caltech-UCSD Birds-200-2011 Dataset.
@@ -59,18 +61,19 @@ class BirdsDataset(dataset.Dataset):
         """
         super().__init__()
 
-
-        # download the data 
+        # download the data
         if not os.path.isdir(self._BASE_PATH):
             print(
-                "PLEASE DOWNLOAD THE BIRDS DATASET FROM https://drive.google.com/file/d/190Q9nRXyfF1efyI5zLFjWcr-mZRd5WEV/view?usp=drive_link AND PLACE IT IN data/birds"
+                "PLEASE DOWNLOAD THE BIRDS DATASET FROM"
+                " https://drive.google.com/file/d/190Q9nRXyfF1efyI5zLFjWcr-mZRd5WEV/view?usp=drive_link"
+                " AND PLACE IT IN data/birds"
             )
             raise FileNotFoundError
 
-
         # get all birds species folders
         self._birds_folders = glob.glob(
-            os.path.join(self._BASE_PATH, 'CUB_200_2011/CUB_200_2011/images/*'))
+            os.path.join(self._BASE_PATH, "CUB_200_2011/CUB_200_2011/images/*")
+        )
         assert len(self._birds_folders) == (
             NUM_TRAIN_CLASSES + NUM_VAL_CLASSES + NUM_TEST_CLASSES
         )
@@ -107,19 +110,19 @@ class BirdsDataset(dataset.Dataset):
         for class_idx in class_idxs:
             # get a class's examples and sample from them
             all_file_paths = glob.glob(
-                os.path.join(self._birds_folders[class_idx], '*.png')
+                os.path.join(self._birds_folders[class_idx], "*.png")
             )
             sampled_file_paths = np.random.default_rng().choice(
-                all_file_paths,
-                size=self._num_support + self._num_query,
-                replace=False
+                all_file_paths, size=self._num_support + self._num_query, replace=False
             )
             images = [load_image(file_path) for file_path in sampled_file_paths]
-            label = int(self._birds_folders[class_idx].split('/')[-1].split('.')[0]) # get the label from the folder name
+            label = int(
+                self._birds_folders[class_idx].split("/")[-1].split(".")[0]
+            )  # get the label from the folder name
 
             # split sampled examples into support and query
-            images_support.extend(images[:self._num_support])
-            images_query.extend(images[self._num_support:])
+            images_support.extend(images[: self._num_support])
+            images_query.extend(images[self._num_support :])
             labels_support.extend([label] * self._num_support)
             labels_query.extend([label] * self._num_query)
 
@@ -130,6 +133,7 @@ class BirdsDataset(dataset.Dataset):
         labels_query = torch.tensor(labels_query)
 
         return images_support, labels_support, images_query, labels_query
+
 
 class BirdsSampler(sampler.Sampler):
     """Samples task specification keys for an Caltech-UCSD Birds-200-2011 Dataset."""
@@ -151,28 +155,23 @@ class BirdsSampler(sampler.Sampler):
     def __iter__(self):
         return (
             np.random.default_rng().choice(
-                self._split_idxs,
-                size=self._num_way,
-                replace=False
-            ) for _ in range(self._num_tasks)
+                self._split_idxs, size=self._num_way, replace=False
+            )
+            for _ in range(self._num_tasks)
         )
 
     def __len__(self):
         return self._num_tasks
 
 
-def identity(x):
-    return x
-
-
 def get_birds_dataloader(
-        split,
-        batch_size,
-        num_way,
-        num_support,
-        num_query,
-        num_tasks_per_epoch,
-        num_workers=2,
+    split,
+    batch_size,
+    num_way,
+    num_support,
+    num_query,
+    num_tasks_per_epoch,
+    num_workers=2,
 ):
     """Returns a dataloader.DataLoader for Caltech-UCSD Birds-200-2011.
 
@@ -184,19 +183,17 @@ def get_birds_dataloader(
         num_query (int): number of query examples per class
         num_tasks_per_epoch (int): number of tasks before DataLoader is
             exhausted
+        num_workers (int): number of workers for data loading.
     """
 
-    if split == 'train':
+    if split == "train":
         split_idxs = range(NUM_TRAIN_CLASSES)
-    elif split == 'val':
-        split_idxs = range(
-            NUM_TRAIN_CLASSES,
-            NUM_TRAIN_CLASSES + NUM_VAL_CLASSES
-        )
-    elif split == 'test':
+    elif split == "val":
+        split_idxs = range(NUM_TRAIN_CLASSES, NUM_TRAIN_CLASSES + NUM_VAL_CLASSES)
+    elif split == "test":
         split_idxs = range(
             NUM_TRAIN_CLASSES + NUM_VAL_CLASSES,
-            NUM_TRAIN_CLASSES + NUM_VAL_CLASSES + NUM_TEST_CLASSES
+            NUM_TRAIN_CLASSES + NUM_VAL_CLASSES + NUM_TEST_CLASSES,
         )
     else:
         raise ValueError
@@ -206,7 +203,7 @@ def get_birds_dataloader(
         batch_size=batch_size,
         sampler=BirdsSampler(split_idxs, num_way, num_tasks_per_epoch),
         num_workers=num_workers,
-        collate_fn=identity,
+        collate_fn=lambda x: x,
         pin_memory=torch.cuda.is_available(),
-        drop_last=True
+        drop_last=True,
     )

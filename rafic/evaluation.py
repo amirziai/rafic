@@ -2,8 +2,9 @@
 import torch
 import numpy as np
 
-class Evaluation:
 
+class Evaluation:
+    @staticmethod
     def score(logits, labels):
         """Returns the mean accuracy of a model's predictions on a set of examples.
 
@@ -23,7 +24,8 @@ class Evaluation:
         y = y.type(torch.float)
         return torch.mean(y).item()
 
-    def test(self, dataloader_test, model, num_test_tasks: int):
+    @staticmethod
+    def test(dataloader_test, model, num_test_tasks: int):
         """Evaluate the evaluation result on test tasks.
 
         Args:
@@ -39,7 +41,7 @@ class Evaluation:
         std = np.std(accuracies)
         mean_95_confidence_interval = 1.96 * std / np.sqrt(num_test_tasks)
         print(
-            f'Accuracy over {num_test_tasks} test tasks: '
-            f'mean {mean:.3f}, '
-            f'95% confidence interval {mean_95_confidence_interval:.3f}'
+            f"Accuracy over {num_test_tasks} test tasks: "
+            f"mean {mean:.3f}, "
+            f"95% confidence interval {mean_95_confidence_interval:.3f}"
         )
