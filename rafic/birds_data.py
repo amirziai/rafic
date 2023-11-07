@@ -71,8 +71,10 @@ class BirdsDataset(dataset.Dataset):
             raise FileNotFoundError
 
         # get all birds species folders
-        self._birds_folders = glob.glob(
-            os.path.join(self._BASE_PATH, "CUB_200_2011/CUB_200_2011/images/*")
+        self._birds_folders = sorted(
+            glob.glob(
+                os.path.join(self._BASE_PATH, "CUB_200_2011/CUB_200_2011/images/*")
+            )
         )
         assert len(self._birds_folders) == (
             NUM_TRAIN_CLASSES + NUM_VAL_CLASSES + NUM_TEST_CLASSES
@@ -110,6 +112,9 @@ class BirdsDataset(dataset.Dataset):
         for class_idx in class_idxs:
             # get a class's examples and sample from them
             all_file_paths = glob.glob(
+                os.path.join(self._birds_folders[class_idx], "*.jpg")
+            )
+            all_file_paths += glob.glob(
                 os.path.join(self._birds_folders[class_idx], "*.png")
             )
             sampled_file_paths = np.random.default_rng().choice(
