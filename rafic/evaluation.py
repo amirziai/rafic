@@ -60,7 +60,8 @@ class Evaluation:
     def eval_random(cls, dl, seed):
         return cls._eval_per_instance(
             dl=dl,
-            fn_eval=functools.partial(cls._rand, seed=seed),
+            fn_eval=cls._rand,
+            seed=seed,
         )
 
     @staticmethod
