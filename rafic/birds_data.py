@@ -18,6 +18,10 @@ NUM_SAMPLES_PER_CLASS = 41
 BASE_PATH = "./data/birds/CUB_200_2011/CUB_200_2011"
 
 
+def get_rng(seed):
+    return np.random.default_rng(seed) if seed is not None else np.random.default_rng()
+
+
 def load_image(file_path):
     """Loads and transforms an Caltech-UCSD Birds-200-2011 image.
 
@@ -65,7 +69,7 @@ class BirdsDataset(dataset.Dataset):
     pairs.
     """
 
-    def __init__(self, num_support, num_query, deterministic):
+    def __init__(self, num_support, num_query, seed=None):
         """Inits Caltech-UCSD Birds-200-2011 Dataset.
 
         Args:
@@ -73,7 +77,7 @@ class BirdsDataset(dataset.Dataset):
             num_query (int): number of query examples per class
         """
         super().__init__()
-        self._deterministic = deterministic
+        self._seed = seed
 
         # download the data
         if not os.path.isdir(BASE_PATH):
@@ -124,11 +128,7 @@ class BirdsDataset(dataset.Dataset):
             all_file_paths = sorted(
                 glob.glob(os.path.join(self._birds_folders[class_idx], "*.jpg"))
             )
-            rng = (
-                np.random.default_rng(0)
-                if self._deterministic
-                else np.random.default_rng()
-            )
+            rng = rng = get_rng(seed=self._seed)
             sampled_file_paths = rng.choice(
                 all_file_paths, size=self._num_support + self._num_query, replace=False
             )
@@ -158,7 +158,7 @@ class BirdsDataset(dataset.Dataset):
 class BirdsSampler(sampler.Sampler):
     """Samples task specification keys for an Caltech-UCSD Birds-200-2011 Dataset."""
 
-    def __init__(self, split_idxs, num_way, num_tasks):
+    def __init__(self, split_idxs, num_way, num_tasks, seed=None):
         """Inits BirdsSampler.
 
         Args:
@@ -171,12 +171,12 @@ class BirdsSampler(sampler.Sampler):
         self._split_idxs = split_idxs
         self._num_way = num_way
         self._num_tasks = num_tasks
+        self._seed = seed
 
     def __iter__(self):
+        rng = get_rng(seed=self._seed)
         return (
-            np.random.default_rng().choice(
-                self._split_idxs, size=self._num_way, replace=False
-            )
+            rng.choice(self._split_idxs, size=self._num_way, replace=False)
             for _ in range(self._num_tasks)
         )
 
@@ -192,6 +192,7 @@ def get_birds_dataloader(
     num_query,
     num_tasks_per_epoch,
     num_workers=2,
+    seed=None,
 ):
     """Returns a dataloader.DataLoader for Caltech-UCSD Birds-200-2011.
 
@@ -204,6 +205,7 @@ def get_birds_dataloader(
         num_tasks_per_epoch (int): number of tasks before DataLoader is
             exhausted
         num_workers (int): number of workers for data loading.
+        seed (int): for reproducibility
     """
 
     if split == "train":
@@ -219,14 +221,20 @@ def get_birds_dataloader(
         raise ValueError
 
     deterministic = split in {"val", "test"}
+    sampler_obj = BirdsSampler(
+        split_idxs,
+        num_way,
+        num_tasks_per_epoch,
+        seed=seed if deterministic else None,
+    )
     return dataloader.DataLoader(
         dataset=BirdsDataset(
             num_support=num_support,
             num_query=num_query,
-            deterministic=deterministic,
+            seed=seed if deterministic else None,
         ),
         batch_size=batch_size,
-        sampler=BirdsSampler(split_idxs, num_way, num_tasks_per_epoch),
+        sampler=sampler_obj,
         num_workers=num_workers,
         collate_fn=lambda x: x,
         pin_memory=torch.cuda.is_available(),
