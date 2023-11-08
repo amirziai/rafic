@@ -15,6 +15,7 @@ NUM_TRAIN_CLASSES = 130
 NUM_VAL_CLASSES = 10
 NUM_TEST_CLASSES = 60
 NUM_SAMPLES_PER_CLASS = 41
+BASE_PATH = "./data/birds/CUB_200_2011/CUB_200_2011"
 
 
 def load_image(file_path):
@@ -41,6 +42,14 @@ def load_image(file_path):
     return tensor
 
 
+def load_embedding(path: str) -> torch.Tensor:
+    pieces = path.split("/")
+    base = pieces[:-2]
+    fn = pieces[-1].split(".")[0]
+    path_np = f"{base}/{fn}.np"
+    return torch.tensor(np.load(path_np))
+
+
 class BirdsDataset(dataset.Dataset):
     """Caltech-UCSD Birds-200-2011 Dataset for meta-learning.
 
@@ -49,8 +58,6 @@ class BirdsDataset(dataset.Dataset):
     value is the instantiated task, which consists of sampled (image, label)
     pairs.
     """
-
-    _BASE_PATH = "./data/birds"
 
     def __init__(self, num_support, num_query):
         """Inits Caltech-UCSD Birds-200-2011 Dataset.
@@ -62,7 +69,7 @@ class BirdsDataset(dataset.Dataset):
         super().__init__()
 
         # download the data
-        if not os.path.isdir(self._BASE_PATH):
+        if not os.path.isdir(BASE_PATH):
             print(
                 "PLEASE DOWNLOAD THE BIRDS DATASET FROM"
                 " https://drive.google.com/file/d/190Q9nRXyfF1efyI5zLFjWcr-mZRd5WEV/view?usp=drive_link"
@@ -71,11 +78,7 @@ class BirdsDataset(dataset.Dataset):
             raise FileNotFoundError
 
         # get all birds species folders
-        self._birds_folders = sorted(
-            glob.glob(
-                os.path.join(self._BASE_PATH, "CUB_200_2011/CUB_200_2011/images/*")
-            )
-        )
+        self._birds_folders = sorted(glob.glob(os.path.join(BASE_PATH, "images/*")))
         assert len(self._birds_folders) == (
             NUM_TRAIN_CLASSES + NUM_VAL_CLASSES + NUM_TEST_CLASSES
         )
@@ -114,13 +117,11 @@ class BirdsDataset(dataset.Dataset):
             all_file_paths = glob.glob(
                 os.path.join(self._birds_folders[class_idx], "*.jpg")
             )
-            all_file_paths += glob.glob(
-                os.path.join(self._birds_folders[class_idx], "*.png")
-            )
             sampled_file_paths = np.random.default_rng().choice(
                 all_file_paths, size=self._num_support + self._num_query, replace=False
             )
-            images = [load_image(file_path) for file_path in sampled_file_paths]
+            # images = [load_image(file_path) for file_path in sampled_file_paths]
+            images = [load_embedding(file_path) for file_path in sampled_file_paths]
             label = int(
                 self._birds_folders[class_idx].split("/")[-1].split(".")[0]
             )  # get the label from the folder name
@@ -132,7 +133,9 @@ class BirdsDataset(dataset.Dataset):
             labels_query.extend([label] * self._num_query)
 
         # aggregate into tensors
-        images_support = torch.stack(images_support)  # shape (N*S, C, H, W)
+        images_support = torch.stack(
+            images_support
+        )  # shape (N*S, D) where D is the size of CLIP embeddings (e.g. 768)
         labels_support = torch.tensor(labels_support)  # shape (N*S)
         images_query = torch.stack(images_query)
         labels_query = torch.tensor(labels_query)
