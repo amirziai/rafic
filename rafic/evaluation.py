@@ -45,3 +45,8 @@ class Evaluation:
             f"mean {mean:.3f}, "
             f"95% confidence interval {mean_95_confidence_interval:.3f}"
         )
+
+    @staticmethod
+    def eval_non_parametric_nn(dl):
+        for x in dl:
+            pass

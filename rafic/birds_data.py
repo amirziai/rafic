@@ -43,6 +43,11 @@ def load_image(file_path):
 
 
 def load_embedding(path: str) -> torch.Tensor:
+    """
+    Assumes that we're storing images and embeddings in this way:
+    - {path_parent}/images/{class_name}/{image_name}.jpg
+    - {path_parent}/embeddings/{class_name}/{image_name}.np
+    """
     pieces = path.split("/")
     base = "/".join(pieces[:-3])
     cls = pieces[-2]
@@ -60,7 +65,7 @@ class BirdsDataset(dataset.Dataset):
     pairs.
     """
 
-    def __init__(self, num_support, num_query):
+    def __init__(self, num_support, num_query, deterministic):
         """Inits Caltech-UCSD Birds-200-2011 Dataset.
 
         Args:
@@ -68,6 +73,7 @@ class BirdsDataset(dataset.Dataset):
             num_query (int): number of query examples per class
         """
         super().__init__()
+        self._deterministic = deterministic
 
         # download the data
         if not os.path.isdir(BASE_PATH):
@@ -115,10 +121,15 @@ class BirdsDataset(dataset.Dataset):
 
         for class_idx in class_idxs:
             # get a class's examples and sample from them
-            all_file_paths = glob.glob(
-                os.path.join(self._birds_folders[class_idx], "*.jpg")
+            all_file_paths = sorted(
+                glob.glob(os.path.join(self._birds_folders[class_idx], "*.jpg"))
             )
-            sampled_file_paths = np.random.default_rng().choice(
+            rng = (
+                np.random.default_rng(0)
+                if self._deterministic
+                else np.random.default_rng()
+            )
+            sampled_file_paths = rng.choice(
                 all_file_paths, size=self._num_support + self._num_query, replace=False
             )
             # images = [load_image(file_path) for file_path in sampled_file_paths]
@@ -207,8 +218,13 @@ def get_birds_dataloader(
     else:
         raise ValueError
 
+    deterministic = split in {"val", "test"}
     return dataloader.DataLoader(
-        dataset=BirdsDataset(num_support, num_query),
+        dataset=BirdsDataset(
+            num_support=num_support,
+            num_query=num_query,
+            deterministic=deterministic,
+        ),
         batch_size=batch_size,
         sampler=BirdsSampler(split_idxs, num_way, num_tasks_per_epoch),
         num_workers=num_workers,
