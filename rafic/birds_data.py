@@ -44,7 +44,7 @@ def load_image(file_path):
 
 def load_embedding(path: str) -> torch.Tensor:
     pieces = path.split("/")
-    base = pieces[:-2]
+    base = "/".join(pieces[:-2])
     fn = pieces[-1].split(".")[0]
     path_np = f"{base}/{fn}.np"
     return torch.tensor(np.load(path_np))
