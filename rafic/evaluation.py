@@ -1,6 +1,9 @@
 """Evaluation component for the model."""
+import functools
 import torch
 import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+from tqdm.auto import tqdm
 
 
 class Evaluation:
@@ -46,7 +49,51 @@ class Evaluation:
             f"95% confidence interval {mean_95_confidence_interval:.3f}"
         )
 
+    @classmethod
+    def eval_non_parametric_nn(cls, dl) -> float:
+        return cls._eval_per_instance(
+            dl=dl,
+            fn_eval=cls._nn,
+        )
+
+    @classmethod
+    def eval_random(cls, dl, seed):
+        return cls._eval_per_instance(
+            dl=dl,
+            fn_eval=functools.partial(cls._rand, seed=seed),
+        )
+
     @staticmethod
-    def eval_non_parametric_nn(dl):
-        for x in dl:
-            pass
+    def _eval_per_instance(dl, fn_eval, seed=None):
+        if seed is not None:
+            np.random.seed(seed)
+        correct_total = 0
+        cnt_total = 0
+        for data_batch in tqdm(dl):
+            for idx in range(len(data_batch)):
+                correct, cnt = fn_eval(data_batch[idx])
+                cnt_total += cnt
+                correct_total += correct
+
+        return correct_total / cnt_total
+
+    @staticmethod
+    def _nn(data):
+        x_tr, y_tr, x_ts, y_ts = data
+        uniq = sorted(np.unique(y_tr))
+        lookup = {cls: idx for idx, cls in enumerate(uniq)}
+        lookup_rev = list(lookup.keys())
+        labels = torch.tensor([lookup[a.item()] for a in y_tr])
+        centroids = np.vstack(
+            [x_tr[labels == i].mean(axis=0).numpy() for i in range(len(uniq))]
+        )
+        ps = cosine_similarity(x_ts.numpy(), centroids).argmax(axis=0)
+        correct = np.sum([y.item() == lookup_rev[p] for y, p in zip(y_ts, ps)])
+        return correct, len(ps)
+
+    @staticmethod
+    def _rand(data):
+        _, _, _, y_ts = data
+        ps = np.random.choice(np.unique(y_ts), len(y_ts), replace=False)
+        correct = np.sum(y_ts.numpy() == ps)
+        return correct, len(ps)
