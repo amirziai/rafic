@@ -27,28 +27,28 @@ def get_rng(seed):
     return np.random.default_rng(seed) if seed is not None else np.random.default_rng()
 
 
-def load_image(file_path):
-    """Loads and transforms an Caltech-UCSD Birds-200-2011 image.
-
-    Args:
-        file_path (str): file path of image
-
-    Returns:
-        a Tensor containing image data
-            shape (3, 224, 224)
-    """
-    transform = transforms.Compose(
-        [
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-        ]
-    )
-
-    image = Image.open(file_path)
-    tensor = transform(image)
-    return tensor
+# def load_image(file_path):
+#     """Loads and transforms an Caltech-UCSD Birds-200-2011 image.
+#
+#     Args:
+#         file_path (str): file path of image
+#
+#     Returns:
+#         a Tensor containing image data
+#             shape (3, 224, 224)
+#     """
+#     transform = transforms.Compose(
+#         [
+#             transforms.Resize(256),
+#             transforms.CenterCrop(224),
+#             transforms.ToTensor(),
+#             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+#         ]
+#     )
+#
+#     image = Image.open(file_path)
+#     tensor = transform(image)
+#     return tensor
 
 
 def load_embedding(path: str) -> torch.Tensor:
@@ -175,8 +175,9 @@ class BirdsDataset(dataset.Dataset):
         if self._num_aug == 0:
             return embs_supp
         emb = torch.stack(embs_supp).mean(axis=0).numpy()
-        print(emb.shape)
+        print(emb.shape, type(emb))
         keys = self._search.search_given_emb(emb=emb, n=self._num_aug)
+        print(f"keys: {keys}")
         embs_aug = list(map(load_embedding_aug_by_key, keys))
         return embs_supp + embs_aug
 
