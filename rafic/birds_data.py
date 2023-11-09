@@ -158,7 +158,7 @@ class BirdsDataset(dataset.Dataset):
             )  # get the label from the folder name
 
             # split sampled examples into support and query
-            embs_supp = embs[: self.num_supp_aug]
+            embs_supp = embs[: self._num_support]
             embs_supp_aug = self._augment(embs_supp)
             images_support.extend(embs_supp_aug)
             images_query.extend(embs[self._num_support :])
@@ -179,12 +179,9 @@ class BirdsDataset(dataset.Dataset):
         if self._num_aug == 0:
             return embs_supp
         emb = torch.stack(embs_supp).mean(axis=0).numpy()
-        # print(emb.shape, type(emb))
         keys = self._search.search_given_emb(emb=emb, n=self._num_aug)
-        # print(f"keys: {keys}")
         embs_aug = list(map(load_embedding_aug_by_key, keys))
         comb = embs_supp + embs_aug
-        print(f"len: {len(comb)}")
         return comb
 
 
