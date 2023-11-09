@@ -161,7 +161,7 @@ class BirdsDataset(dataset.Dataset):
             embs_supp = embs[: self.num_supp_aug]
             embs_supp_aug = self._augment(embs_supp)
             images_support.extend(embs_supp_aug)
-            images_query.extend(embs[self.num_supp_aug :])
+            images_query.extend(embs[self._num_support :])
             labels_support.extend([label] * self.num_supp_aug)
             labels_query.extend([label] * self._num_query)
 
