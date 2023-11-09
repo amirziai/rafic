@@ -38,6 +38,7 @@ class CLIPSearch:
     path: str
     max_n: int = MAX_N
     n_jobs: int = -1
+    pre_built_nn_obj_path: t.Optional[str] = None
     _image_path_base: str = IMAGE_PATH_BASE
 
     def search_given_emb(self, emb: np.ndarray, n: int) -> t.List[str]:
@@ -118,6 +119,10 @@ class CLIPSearch:
     @property
     @functools.lru_cache()
     def _nn(self):
+        p = self.pre_built_nn_obj_path
+        if p is not None:
+            logger.info(f"Loading NN object from {p}...")
+            return pickle.load(open(p, 'rb'))
         logger.info("Fitting NN object...")
         nn = NearestNeighbors(
             n_neighbors=self.max_n,
