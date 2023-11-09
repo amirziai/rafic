@@ -175,6 +175,7 @@ class BirdsDataset(dataset.Dataset):
         if self._num_aug == 0:
             return embs_supp
         emb = torch.stack(embs_supp).mean(axis=0).numpy()
+        print(emb.shape)
         keys = self._search.search_given_emb(emb=emb, n=self._num_aug)
         embs_aug = list(map(load_embedding_aug_by_key, keys))
         return embs_supp + embs_aug
