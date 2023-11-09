@@ -1,5 +1,5 @@
 """Evaluation component for the model."""
-import functools
+
 import torch
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity

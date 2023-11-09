@@ -8,6 +8,8 @@ from torch.utils.data import dataset, sampler, dataloader
 from torchvision import transforms
 from PIL import Image
 
+from . import search
+
 # Overall we have 200 classes
 # max pictures for a bird is 60
 # min pictures for a bird is 41
@@ -16,6 +18,9 @@ NUM_VAL_CLASSES = 10
 NUM_TEST_CLASSES = 60
 NUM_SAMPLES_PER_CLASS = 41
 BASE_PATH = "./data/birds/CUB_200_2011/CUB_200_2011"
+PATH_SEARCH = "/root/notebooks/clip-laion-400m-1m.pkl"
+PATH_SEARCH_EMB = "/root/data/laion"
+SEED = 0
 
 
 def get_rng(seed):
@@ -60,6 +65,11 @@ def load_embedding(path: str) -> torch.Tensor:
     return torch.tensor(np.load(path_np))
 
 
+def load_embedding_aug_by_key(key: str) -> torch.Tensor:
+    path_np = f"{PATH_SEARCH_EMB}/{key}.np"
+    return torch.tensor(np.load(path_np))
+
+
 class BirdsDataset(dataset.Dataset):
     """Caltech-UCSD Birds-200-2011 Dataset for meta-learning.
 
@@ -69,7 +79,7 @@ class BirdsDataset(dataset.Dataset):
     pairs.
     """
 
-    def __init__(self, num_support, num_query, seed=None):
+    def __init__(self, num_support, num_query, num_aug: int = 0, seed=None):
         """Inits Caltech-UCSD Birds-200-2011 Dataset.
 
         Args:
@@ -77,7 +87,9 @@ class BirdsDataset(dataset.Dataset):
             num_query (int): number of query examples per class
         """
         super().__init__()
+        self._num_aug = num_aug
         self._seed = seed
+        self._search = search.CLIPSearch(path=PATH_SEARCH, max_n=max(1, num_aug))
 
         # download the data
         if not os.path.isdir(BASE_PATH):
@@ -95,12 +107,16 @@ class BirdsDataset(dataset.Dataset):
         )
 
         # shuffle birds classes
-        np.random.default_rng(0).shuffle(self._birds_folders)
+        np.random.default_rng(SEED).shuffle(self._birds_folders)
 
         # check problem arguments
         assert num_support + num_query <= NUM_SAMPLES_PER_CLASS
         self._num_support = num_support
         self._num_query = num_query
+
+    @property
+    def num_supp_aug(self) -> int:
+        return self._num_support + self._num_aug
 
     def __getitem__(self, class_idxs):
         """Constructs a task.
@@ -128,20 +144,21 @@ class BirdsDataset(dataset.Dataset):
             all_file_paths = sorted(
                 glob.glob(os.path.join(self._birds_folders[class_idx], "*.jpg"))
             )
-            rng = rng = get_rng(seed=self._seed)
+            rng = get_rng(seed=self._seed)
             sampled_file_paths = rng.choice(
                 all_file_paths, size=self._num_support + self._num_query, replace=False
             )
-            # images = [load_image(file_path) for file_path in sampled_file_paths]
-            images = [load_embedding(file_path) for file_path in sampled_file_paths]
+            embs = [load_embedding(file_path) for file_path in sampled_file_paths]
             label = int(
                 self._birds_folders[class_idx].split("/")[-1].split(".")[0]
             )  # get the label from the folder name
 
             # split sampled examples into support and query
-            images_support.extend(images[: self._num_support])
-            images_query.extend(images[self._num_support :])
-            labels_support.extend([label] * self._num_support)
+            embs_supp = embs[: self.num_supp_aug]
+            embs_supp_aug = self._augment(embs_supp)
+            images_support.extend(embs_supp_aug)
+            images_query.extend(embs[self.num_supp_aug :])
+            labels_support.extend([label] * self.num_supp_aug)
             labels_query.extend([label] * self._num_query)
 
         # aggregate into tensors
@@ -153,6 +170,14 @@ class BirdsDataset(dataset.Dataset):
         labels_query = torch.tensor(labels_query)
 
         return images_support, labels_support, images_query, labels_query
+
+    def _augment(self, embs_supp):
+        if self._num_aug == 0:
+            return embs_supp
+        emb = torch.stack(embs_supp).mean(axis=0).numpy()
+        keys = self._search.search_given_emb(emb=emb, n=self._num_aug)
+        embs_aug = list(map(load_embedding_aug_by_key, keys))
+        return embs_supp + embs_aug
 
 
 class BirdsSampler(sampler.Sampler):
@@ -191,6 +216,7 @@ def get_birds_dataloader(
     num_support,
     num_query,
     num_tasks_per_epoch,
+    num_aug=0,
     num_workers=2,
     seed=None,
 ):
@@ -204,9 +230,11 @@ def get_birds_dataloader(
         num_query (int): number of query examples per class
         num_tasks_per_epoch (int): number of tasks before DataLoader is
             exhausted
+        num_aug (int): number of additional items to retrieve.
         num_workers (int): number of workers for data loading.
         seed (int): for reproducibility
     """
+    assert num_aug >= 0
 
     if split == "train":
         split_idxs = range(NUM_TRAIN_CLASSES)
@@ -232,6 +260,7 @@ def get_birds_dataloader(
             num_support=num_support,
             num_query=num_query,
             seed=seed if deterministic else None,
+            num_aug=num_aug,
         ),
         batch_size=batch_size,
         sampler=sampler_obj,

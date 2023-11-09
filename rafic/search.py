@@ -15,7 +15,7 @@ except ImportError:
     raise ImportError(
         """
     You don't have `clip` installed.
-    See https://github.com/openai/CLIP.
+    See https://github.com/openai/CLIP
     """
     )
 
