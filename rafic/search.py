@@ -122,7 +122,10 @@ class CLIPSearch:
         p = self.pre_built_nn_obj_path
         if p is not None:
             logger.info(f"Loading NN object from {p}...")
-            return pickle.load(open(p, "rb"))
+            nn = pickle.load(open(p, "rb"))
+            logger.info(f"NN object fitted")
+            nn.n_jobs = self.n_jobs
+            return nn
         logger.info("Fitting NN object...")
         nn = NearestNeighbors(
             n_neighbors=self.max_n,
