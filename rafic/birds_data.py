@@ -183,7 +183,9 @@ class BirdsDataset(dataset.Dataset):
         keys = self._search.search_given_emb(emb=emb, n=self._num_aug)
         # print(f"keys: {keys}")
         embs_aug = list(map(load_embedding_aug_by_key, keys))
-        return embs_supp + embs_aug
+        comb = embs_supp + embs_aug
+        print(f"len: {len(comb)}")
+        return comb
 
 
 class BirdsSampler(sampler.Sampler):
