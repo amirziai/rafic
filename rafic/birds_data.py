@@ -89,7 +89,7 @@ class BirdsDataset(dataset.Dataset):
         super().__init__()
         self._num_aug = num_aug
         self._seed = seed
-        self._search = search.CLIPSearch(path=PATH_SEARCH, max_n=max(1, num_aug))
+        self._search = search.CLIPSearch(path=PATH_SEARCH, max_n=max(2, num_aug))
 
         # download the data
         if not os.path.isdir(BASE_PATH):
