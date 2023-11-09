@@ -89,7 +89,11 @@ class BirdsDataset(dataset.Dataset):
         super().__init__()
         self._num_aug = num_aug
         self._seed = seed
-        self._search = search.CLIPSearch(path=PATH_SEARCH, max_n=max(2, num_aug))
+        self._search = search.CLIPSearch(
+            path=PATH_SEARCH,
+            max_n=max(2, num_aug),
+            n_jobs=1,
+        )
 
         # download the data
         if not os.path.isdir(BASE_PATH):
@@ -175,9 +179,9 @@ class BirdsDataset(dataset.Dataset):
         if self._num_aug == 0:
             return embs_supp
         emb = torch.stack(embs_supp).mean(axis=0).numpy()
-        print(emb.shape, type(emb))
+        # print(emb.shape, type(emb))
         keys = self._search.search_given_emb(emb=emb, n=self._num_aug)
-        print(f"keys: {keys}")
+        # print(f"keys: {keys}")
         embs_aug = list(map(load_embedding_aug_by_key, keys))
         return embs_supp + embs_aug
 

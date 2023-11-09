@@ -37,6 +37,7 @@ class CLIPSearch:
 
     path: str
     max_n: int = MAX_N
+    n_jobs: int = -1
     _image_path_base: str = IMAGE_PATH_BASE
 
     def search_given_emb(self, emb: np.ndarray, n: int) -> t.List[str]:
@@ -55,6 +56,10 @@ class CLIPSearch:
             emb,
             axis=0,
         )
+        idxs = self._nn.kneighbors(emb)[1].squeeze()[:n]
+        return [self._idx_to_key_lookup[idx] for idx in idxs]
+
+    def search_given_emb_batch(self, emb: np.ndarray, n: int) -> t.List[t.List[str]]:
         idxs = self._nn.kneighbors(emb)[1].squeeze()[:n]
         return [self._idx_to_key_lookup[idx] for idx in idxs]
 
@@ -118,7 +123,7 @@ class CLIPSearch:
             n_neighbors=self.max_n,
             metric="cosine",
             algorithm="brute",
-            n_jobs=-1,
+            n_jobs=self.n_jobs,
         )
         nn.fit(self._embs)
         logger.info("NN object fitted!")
