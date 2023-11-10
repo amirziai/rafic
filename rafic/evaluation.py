@@ -2,6 +2,7 @@
 
 import torch
 import numpy as np
+from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 from sklearn.metrics.pairwise import cosine_similarity
 from tqdm.auto import tqdm
 
@@ -64,6 +65,10 @@ class Evaluation:
             seed=seed,
         )
 
+    @classmethod
+    def eval_clf(cls, dl, seed):
+        return cls._eval_per_instance(dl=dl, fn_eval=cls._clf, seed=seed)
+
     @staticmethod
     def _eval_per_instance(dl, fn_eval, seed=None):
         if seed is not None:
@@ -97,4 +102,15 @@ class Evaluation:
         _, _, _, y_ts = data
         ps = np.random.choice(np.unique(y_ts), len(y_ts), replace=False)
         correct = np.sum(y_ts.numpy() == ps)
+        return correct, len(ps)
+
+    @staticmethod
+    def _clf(data):
+        x_tr, y_tr, x_ts, y_ts = data
+        w = len(np.unique(y_tr))
+        n = len(x_tr) // w
+        clf = LogisticRegressionCV(cv=n) if n >= 2 else LogisticRegression()
+        clf.fit(x_tr.numpy(), y_tr.numpy())
+        ps = clf.predict(x_ts.numpy())
+        correct = np.sum(ps == y_ts.numpy())
         return correct, len(ps)

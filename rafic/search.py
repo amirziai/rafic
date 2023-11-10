@@ -38,8 +38,8 @@ class CLIPSearch:
     """
 
     path: str = PATH_EMBS
-    pre_built_nn_obj_path: str = PATH_FAISS
-    _image_path_base: str = IMAGE_PATH_BASE
+    faiss_index_path: str = PATH_FAISS
+    image_path_base: str = IMAGE_PATH_BASE
 
     def search_given_emb(self, emb: np.ndarray, n: int) -> t.List[str]:
         """
@@ -58,11 +58,6 @@ class CLIPSearch:
         idxs = idxs.squeeze() if n >= 2 else [idxs.item()]
         return [self._idx_to_key_lookup[idx] for idx in idxs]
 
-    def search_given_emb_batch(self, emb: np.ndarray, n: int) -> t.List[t.List[str]]:
-        # TODO
-        idxs = ...
-        return [self._idx_to_key_lookup[idx] for idx in idxs]
-
     def search_given_text(self, text: str, n: int) -> t.List[str]:
         """
         Nearest neighbor search given an input text.
@@ -75,7 +70,7 @@ class CLIPSearch:
         from IPython.display import Image as JImage, display
 
         for key in keys:
-            path = f"{self._image_path_base}/{key}.png"
+            path = f"{self.image_path_base}/{key}.png"
             display(JImage(path))
 
     @property
@@ -118,7 +113,7 @@ class CLIPSearch:
     @property
     @functools.lru_cache()
     def _faiss_index(self):
-        p = self.pre_built_nn_obj_path
+        p = self.faiss_index_path
         logger.info(f"Loading faiss index from {p}...")
         nn = faiss.read_index(p)
         logger.info(f"faiss index loaded!")
