@@ -21,7 +21,7 @@ NUM_SAMPLES_PER_CLASS = 41
 BASE_PATH = "./data/birds/CUB_200_2011/CUB_200_2011"
 PATH_SEARCH = "/root/data/laion/faiss/clip-laion-400m-1m.pkl"
 PATH_SEARCH_EMB = "/root/data/laion"
-PATH_PRE_BUILT_NN_OBJ = "/root/data/laion/faiss/clip-laion-400m-1m-faiss.index"
+PATH_FAISS_INDEX = "/root/data/laion/faiss/clip-laion-400m-1m-faiss.index"
 SEED = 0
 
 
@@ -88,7 +88,7 @@ class BirdsDataset(dataset.Dataset):
         num_aug: int = 0,
         seed=None,
         search_index_big=True,
-        pre_built_nn_obj_path=None,
+        faiss_index_path=None,
     ):
         """Inits Caltech-UCSD Birds-200-2011 Dataset.
 
@@ -101,7 +101,7 @@ class BirdsDataset(dataset.Dataset):
         self._seed = seed
         self._search = search.CLIPSearch(
             path=PATH_SEARCH.replace("-1m", "-1m" if search_index_big else "-1k"),
-            pre_built_nn_obj_path=pre_built_nn_obj_path,
+            faiss_index_path=faiss_index_path,
         )
 
         # download the data
@@ -234,7 +234,7 @@ def get_birds_dataloader(
     num_workers=2,
     search_index_big=True,
     seed=None,
-    pre_built_nn_obj_path=PATH_PRE_BUILT_NN_OBJ,
+    faiss_index_path=PATH_FAISS_INDEX,
 ):
     """Returns a dataloader.DataLoader for Caltech-UCSD Birds-200-2011.
 
@@ -250,7 +250,7 @@ def get_birds_dataloader(
         num_workers (int): number of workers for data loading.
         search_index_big (bool): True: 1M images, False: 1K images.
         seed (int): for reproducibility
-        pre_built_nn_obj_path (str): path to obj for NN search if one exists
+        faiss_index_path (str): path to the faiss index
     """
     assert num_aug >= 0
 
@@ -280,7 +280,7 @@ def get_birds_dataloader(
             seed=seed if deterministic else None,
             num_aug=num_aug,
             search_index_big=search_index_big,
-            pre_built_nn_obj_path=pre_built_nn_obj_path,
+            faiss_index_path=faiss_index_path,
         ),
         batch_size=batch_size,
         sampler=sampler_obj,
