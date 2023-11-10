@@ -55,12 +55,12 @@ class CLIPSearch:
         emb = np.expand_dims(emb, axis=0)
         emb = normalize(emb, axis=1)
         _, idxs = self._faiss_index.search(emb, k=n)
-        idxs = idxs.squeeze() if n >= 2 else idxs
+        idxs = idxs.squeeze() if n >= 2 else [idxs.item()]
         return [self._idx_to_key_lookup[idx] for idx in idxs]
 
     def search_given_emb_batch(self, emb: np.ndarray, n: int) -> t.List[t.List[str]]:
         # TODO
-        idxs = self._faiss_index.kneighbors(emb)[1].squeeze()[:n]
+        idxs = ...
         return [self._idx_to_key_lookup[idx] for idx in idxs]
 
     def search_given_text(self, text: str, n: int) -> t.List[str]:
