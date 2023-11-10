@@ -54,8 +54,8 @@ class CLIPSearch:
         assert emb_dim[0] == self._embs.shape[1], "emb must be the same dim as index"
         emb = np.expand_dims(emb, axis=0)
         emb = normalize(emb, axis=1)
-        idxs = self._faiss_index.search(emb, k=n)[1].squeeze()
-        assert len(idxs) == n, f"idxs is expected to have size n={n}, idxs={idxs}"
+        _, idxs = self._faiss_index.search(emb, k=n)
+        idxs = idxs.squeeze() if n >= 2 else idxs
         return [self._idx_to_key_lookup[idx] for idx in idxs]
 
     def search_given_emb_batch(self, emb: np.ndarray, n: int) -> t.List[t.List[str]]:
