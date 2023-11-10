@@ -19,9 +19,9 @@ NUM_VAL_CLASSES = 10
 NUM_TEST_CLASSES = 60
 NUM_SAMPLES_PER_CLASS = 41
 BASE_PATH = "./data/birds/CUB_200_2011/CUB_200_2011"
-PATH_SEARCH = "/root/notebooks/clip-laion-400m-1m.pkl"
+PATH_SEARCH = "/root/data/laion/faiss/clip-laion-400m-1m.pkl"
 PATH_SEARCH_EMB = "/root/data/laion"
-PATH_PRE_BUILT_NN_OBJ = "/root/notebooks/nn-1m.pkl"
+PATH_PRE_BUILT_NN_OBJ = "/root/data/laion/faiss/clip-laion-400m-1m-faiss.index"
 SEED = 0
 
 
