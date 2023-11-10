@@ -34,13 +34,10 @@ logger = logging.getLogger(__name__)
 class CLIPSearch:
     """
     Path to the embeddings file.
-    `max_n` is the maximum number of items we want to return.
     Once the object is instantiated, we won't be able to search for more.
     """
 
     path: str = PATH_EMBS
-    max_n: int = MAX_N
-    n_jobs: int = -1
     pre_built_nn_obj_path: str = PATH_FAISS
     _image_path_base: str = IMAGE_PATH_BASE
 
@@ -49,16 +46,16 @@ class CLIPSearch:
         Nearest neighbor search given an input embedding.
         Won't filter out the exact match (i.e. if the image is already in the index).
         :param emb: Single-dimensional embedding to search.
-        :param n: number of results () to return. Can't be more than `max_n`.
+        :param n: number of results to return.
         :return: list of LAION image keys.
         """
-        assert n <= self.max_n
         emb_dim = emb.shape
         assert len(emb_dim) == 1, "emb must be 1 dimensional"
         assert emb_dim[0] == self._embs.shape[1], "emb must be the same dim as index"
         emb = np.expand_dims(emb, axis=0)
         emb = normalize(emb, axis=1)
         idxs = self._faiss_index.search(emb, k=n)[1].squeeze()
+        assert len(idxs) == n, f"idxs is expected to have size n={n}, idxs={idxs}"
         return [self._idx_to_key_lookup[idx] for idx in idxs]
 
     def search_given_emb_batch(self, emb: np.ndarray, n: int) -> t.List[t.List[str]]:
@@ -125,5 +122,4 @@ class CLIPSearch:
         logger.info(f"Loading faiss index from {p}...")
         nn = faiss.read_index(p)
         logger.info(f"faiss index loaded!")
-        nn.n_jobs = self.n_jobs
         return nn

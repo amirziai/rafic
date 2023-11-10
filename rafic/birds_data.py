@@ -101,8 +101,6 @@ class BirdsDataset(dataset.Dataset):
         self._seed = seed
         self._search = search.CLIPSearch(
             path=PATH_SEARCH.replace("-1m", "-1m" if search_index_big else "-1k"),
-            max_n=max(2, num_aug),
-            n_jobs=1,
             pre_built_nn_obj_path=pre_built_nn_obj_path,
         )
 
