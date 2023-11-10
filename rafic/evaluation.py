@@ -109,7 +109,7 @@ class Evaluation:
         x_tr, y_tr, x_ts, y_ts = data
         w = len(np.unique(y_tr))
         n = len(x_tr) // w
-        clf = LogisticRegressionCV(cv=n) if n >= 2 else LogisticRegression()
+        clf = LogisticRegressionCV(cv=min(n, 3)) if n >= 2 else LogisticRegression()
         clf.fit(x_tr.numpy(), y_tr.numpy())
         ps = clf.predict(x_ts.numpy())
         correct = np.sum(ps == y_ts.numpy())
