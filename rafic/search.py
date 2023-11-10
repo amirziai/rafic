@@ -4,9 +4,10 @@ import pickle
 import typing as t
 from dataclasses import dataclass
 
+import faiss
 import numpy as np
 import torch
-from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import normalize
 
 
 try:
@@ -22,6 +23,8 @@ except ImportError:
 CLIP_MODEL_TYPE = "ViT-L/14@336px"
 MAX_N = 10
 IMAGE_PATH_BASE = "/root/data/laion/images"
+PATH_FAISS = "/root/data/laion/faiss/clip-laion-400m-1m-faiss.index"
+PATH_EMBS = "/root/data/laion/faiss/clip-laion-400m-1m.pkl"
 
 
 logger = logging.getLogger(__name__)
@@ -35,10 +38,10 @@ class CLIPSearch:
     Once the object is instantiated, we won't be able to search for more.
     """
 
-    path: str
+    path: str = PATH_EMBS
     max_n: int = MAX_N
     n_jobs: int = -1
-    pre_built_nn_obj_path: t.Optional[str] = None
+    pre_built_nn_obj_path: str = PATH_FAISS
     _image_path_base: str = IMAGE_PATH_BASE
 
     def search_given_emb(self, emb: np.ndarray, n: int) -> t.List[str]:
@@ -53,15 +56,14 @@ class CLIPSearch:
         emb_dim = emb.shape
         assert len(emb_dim) == 1, "emb must be 1 dimensional"
         assert emb_dim[0] == self._embs.shape[1], "emb must be the same dim as index"
-        emb = np.expand_dims(
-            emb,
-            axis=0,
-        )
-        idxs = self._nn.kneighbors(emb)[1].squeeze()[:n]
+        emb = np.expand_dims(emb, axis=0)
+        emb = normalize(emb, axis=1)
+        idxs = self._faiss_index.search(emb, k=n)[1].squeeze()
         return [self._idx_to_key_lookup[idx] for idx in idxs]
 
     def search_given_emb_batch(self, emb: np.ndarray, n: int) -> t.List[t.List[str]]:
-        idxs = self._nn.kneighbors(emb)[1].squeeze()[:n]
+        # TODO
+        idxs = self._faiss_index.kneighbors(emb)[1].squeeze()[:n]
         return [self._idx_to_key_lookup[idx] for idx in idxs]
 
     def search_given_text(self, text: str, n: int) -> t.List[str]:
@@ -118,21 +120,10 @@ class CLIPSearch:
 
     @property
     @functools.lru_cache()
-    def _nn(self):
+    def _faiss_index(self):
         p = self.pre_built_nn_obj_path
-        if p is not None:
-            logger.info(f"Loading NN object from {p}...")
-            nn = pickle.load(open(p, "rb"))
-            logger.info(f"NN object fitted")
-            nn.n_jobs = self.n_jobs
-            return nn
-        logger.info("Fitting NN object...")
-        nn = NearestNeighbors(
-            n_neighbors=self.max_n,
-            metric="cosine",
-            algorithm="brute",
-            n_jobs=self.n_jobs,
-        )
-        nn.fit(self._embs)
-        logger.info("NN object fitted!")
+        logger.info(f"Loading faiss index from {p}...")
+        nn = faiss.read_index(p)
+        logger.info(f"faiss index loaded!")
+        nn.n_jobs = self.n_jobs
         return nn
