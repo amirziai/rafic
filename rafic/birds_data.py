@@ -176,9 +176,9 @@ class BirdsDataset(dataset.Dataset):
         # aggregate into tensors
         images_support = torch.stack(
             images_support
-        )  # shape (N*S, D) where D is the size of CLIP embeddings (e.g. 768)
+        ).float()  # shape (N*S, D) where D is the size of CLIP embeddings (e.g. 768)
         labels_support = torch.tensor(labels_support)  # shape (N*S)
-        images_query = torch.stack(images_query)
+        images_query = torch.stack(images_query).float()
         labels_query = torch.tensor(labels_query)
 
         return images_support, labels_support, images_query, labels_query
