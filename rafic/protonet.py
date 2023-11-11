@@ -65,7 +65,10 @@ class ProtoNetNetwork(nn.Module):
         #     layers.append(nn.MaxPool2d(2))
         #     in_channels = NUM_HIDDEN_CHANNELS
         # layers.append(nn.Flatten())
-        layers = [nn.ReLU()]
+        layers = [
+            nn.Linear(in_features=768, out_features=NUM_HIDDEN_CHANNELS),
+            nn.ReLU(),
+        ]
         self._layers = nn.Sequential(*layers)
         self.to(device)
 
