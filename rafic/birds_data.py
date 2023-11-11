@@ -151,7 +151,7 @@ class BirdsDataset(dataset.Dataset):
         images_support, images_query = [], []
         labels_support, labels_query = [], []
 
-        for class_idx in class_idxs:
+        for idx, class_idx in enumerate(class_idxs):
             # get a class's examples and sample from them
             all_file_paths = sorted(
                 glob.glob(os.path.join(self._birds_folders[class_idx], "*.jpg"))
@@ -161,17 +161,17 @@ class BirdsDataset(dataset.Dataset):
                 all_file_paths, size=self._num_support + self._num_query, replace=False
             )
             embs = [load_embedding(file_path) for file_path in sampled_file_paths]
-            label = int(
-                self._birds_folders[class_idx].split("/")[-1].split(".")[0]
-            )  # get the label from the folder name
+            # label = int(
+            #     self._birds_folders[class_idx].split("/")[-1].split(".")[0]
+            # )  # get the label from the folder name
 
             # split sampled examples into support and query
             embs_supp = embs[: self._num_support]
             embs_supp_aug = self._augment(embs_supp)
             images_support.extend(embs_supp_aug)
             images_query.extend(embs[self._num_support :])
-            labels_support.extend([label] * self.num_supp_aug)
-            labels_query.extend([label] * self._num_query)
+            labels_support.extend([idx] * self.num_supp_aug)
+            labels_query.extend([idx] * self._num_query)
 
         # aggregate into tensors
         images_support = torch.stack(
