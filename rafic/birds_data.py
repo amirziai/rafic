@@ -9,7 +9,7 @@ from torch.utils.data import dataset, sampler, dataloader
 # from torchvision import transforms
 # from PIL import Image
 
-from . import search
+from . import config, search
 
 # Overall we have 200 classes
 # max pictures for a bird is 60
@@ -18,11 +18,6 @@ NUM_TRAIN_CLASSES = 130
 NUM_VAL_CLASSES = 10
 NUM_TEST_CLASSES = 60
 NUM_SAMPLES_PER_CLASS = 41
-BASE_PATH = "./data/birds/CUB_200_2011/CUB_200_2011"
-PATH_SEARCH = "/root/data/laion/faiss/clip-laion-400m-1m.pkl"
-PATH_SEARCH_EMB = "/root/data/laion"
-PATH_FAISS_INDEX = "/root/data/laion/faiss/clip-laion-400m-1m-faiss.index"
-SEED = 0
 
 
 def get_rng(seed):
@@ -68,7 +63,7 @@ def load_embedding(path: str) -> torch.Tensor:
 
 
 def load_embedding_aug_by_key(key: str) -> torch.Tensor:
-    path_np = f"{PATH_SEARCH_EMB}/{key}.np"
+    path_np = f"{config.PATH_SEARCH_EMB}/{key}.np"
     return torch.tensor(np.load(path_np))
 
 
@@ -100,12 +95,14 @@ class BirdsDataset(dataset.Dataset):
         self._num_aug = num_aug
         self._seed = seed
         self._search = search.CLIPSearch(
-            path=PATH_SEARCH.replace("-1m", "-1m" if search_index_big else "-1k"),
+            path=config.PATH_SEARCH.replace(
+                "-1m", "-1m" if search_index_big else "-1k"
+            ),
             faiss_index_path=faiss_index_path,
         )
 
         # download the data
-        if not os.path.isdir(BASE_PATH):
+        if not os.path.isdir(config.BASE_PATH):
             print(
                 "PLEASE DOWNLOAD THE BIRDS DATASET FROM"
                 " https://drive.google.com/file/d/190Q9nRXyfF1efyI5zLFjWcr-mZRd5WEV/view?usp=drive_link"
@@ -114,13 +111,15 @@ class BirdsDataset(dataset.Dataset):
             raise FileNotFoundError
 
         # get all birds species folders
-        self._birds_folders = sorted(glob.glob(os.path.join(BASE_PATH, "images/*")))
+        self._birds_folders = sorted(
+            glob.glob(os.path.join(config.BASE_PATH, "images/*"))
+        )
         assert len(self._birds_folders) == (
             NUM_TRAIN_CLASSES + NUM_VAL_CLASSES + NUM_TEST_CLASSES
         )
 
         # shuffle birds classes
-        np.random.default_rng(SEED).shuffle(self._birds_folders)
+        np.random.default_rng(config.SEED).shuffle(self._birds_folders)
 
         # check problem arguments
         assert num_support + num_query <= NUM_SAMPLES_PER_CLASS
@@ -234,7 +233,7 @@ def get_birds_dataloader(
     num_workers=2,
     search_index_big=True,
     seed=None,
-    faiss_index_path=PATH_FAISS_INDEX,
+    faiss_index_path=config.PATH_FAISS_INDEX,
 ):
     """Returns a dataloader.DataLoader for Caltech-UCSD Birds-200-2011.
 
