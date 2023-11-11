@@ -9,7 +9,6 @@ import numpy as np
 import torch
 from sklearn.preprocessing import normalize
 
-
 try:
     import clip
 except ImportError:
@@ -20,11 +19,7 @@ except ImportError:
     """
     )
 
-CLIP_MODEL_TYPE = "ViT-L/14@336px"
-MAX_N = 10
-IMAGE_PATH_BASE = "/root/data/laion/images"
-PATH_FAISS = "/root/data/laion/faiss/clip-laion-400m-1m-faiss.index"
-PATH_EMBS = "/root/data/laion/faiss/clip-laion-400m-1m.pkl"
+from . import config
 
 
 logger = logging.getLogger(__name__)
@@ -37,9 +32,9 @@ class CLIPSearch:
     Once the object is instantiated, we won't be able to search for more.
     """
 
-    path: str = PATH_EMBS
-    faiss_index_path: str = PATH_FAISS
-    image_path_base: str = IMAGE_PATH_BASE
+    path: str = config.PATH_SEARCH
+    faiss_index_path: str = config.PATH_FAISS_INDEX
+    image_path_base: str = config.PATH_IMAGES_LAION
 
     def search_given_emb(self, emb: np.ndarray, n: int) -> t.List[str]:
         """
@@ -101,7 +96,7 @@ class CLIPSearch:
     @functools.lru_cache()
     def _clip_model(self):
         logger.info("Loading CLIP text encoder...")
-        model, _ = clip.load(CLIP_MODEL_TYPE, device=self._device)
+        model, _ = clip.load(config.CLIP_MODEL_TYPE, device=self._device)
         logger.info("CLIP loaded!")
         return model
 
