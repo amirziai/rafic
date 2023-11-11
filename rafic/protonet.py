@@ -49,22 +49,23 @@ class ProtoNetNetwork(nn.Module):
             device (str): device to be used
         """
         super().__init__()
-        layers = []
-        in_channels = NUM_INPUT_CHANNELS
-        for _ in range(NUM_CONV_LAYERS):
-            layers.append(
-                nn.Conv2d(
-                    in_channels,
-                    NUM_HIDDEN_CHANNELS,
-                    (KERNEL_SIZE, KERNEL_SIZE),
-                    padding="same",
-                )
-            )
-            layers.append(nn.BatchNorm2d(NUM_HIDDEN_CHANNELS))
-            layers.append(nn.ReLU())
-            layers.append(nn.MaxPool2d(2))
-            in_channels = NUM_HIDDEN_CHANNELS
-        layers.append(nn.Flatten())
+        # layers = []
+        # in_channels = NUM_INPUT_CHANNELS
+        # for _ in range(NUM_CONV_LAYERS):
+        #     layers.append(
+        #         nn.Conv2d(
+        #             in_channels,
+        #             NUM_HIDDEN_CHANNELS,
+        #             (KERNEL_SIZE, KERNEL_SIZE),
+        #             padding="same",
+        #         )
+        #     )
+        #     layers.append(nn.BatchNorm2d(NUM_HIDDEN_CHANNELS))
+        #     layers.append(nn.ReLU())
+        #     layers.append(nn.MaxPool2d(2))
+        #     in_channels = NUM_HIDDEN_CHANNELS
+        # layers.append(nn.Flatten())
+        layers = [nn.ReLU()]
         self._layers = nn.Sequential(*layers)
         self.to(device)
 
