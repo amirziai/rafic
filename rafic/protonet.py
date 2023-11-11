@@ -83,7 +83,7 @@ class ProtoNetNetwork(nn.Module):
             a Tensor containing a batch of latent representations
                 shape (num_images, latents)
         """
-        return self._layers(images)
+        return self._layers(images.float())
 
 
 class ProtoNet:
