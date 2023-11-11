@@ -30,41 +30,8 @@ NUM_TEST_TASKS = 600
 
 
 class ProtoNetNetwork(nn.Module):
-    """Container for ProtoNet weights and image-to-latent computation."""
-
     def __init__(self, device):
-        """Inits ProtoNetNetwork.
-
-        The network consists of four convolutional blocks, each comprising a
-        convolution layer, a batch normalization layer, ReLU activation, and 2x2
-        max pooling for downsampling. There is an additional flattening
-        operation at the end.
-
-        Note that unlike conventional use, batch normalization is always done
-        with batch statistics, regardless of whether we are training or
-        evaluating. This technically makes meta-learning transductive, as
-        opposed to inductive.
-
-        Args:
-            device (str): device to be used
-        """
         super().__init__()
-        # layers = []
-        # in_channels = NUM_INPUT_CHANNELS
-        # for _ in range(NUM_CONV_LAYERS):
-        #     layers.append(
-        #         nn.Conv2d(
-        #             in_channels,
-        #             NUM_HIDDEN_CHANNELS,
-        #             (KERNEL_SIZE, KERNEL_SIZE),
-        #             padding="same",
-        #         )
-        #     )
-        #     layers.append(nn.BatchNorm2d(NUM_HIDDEN_CHANNELS))
-        #     layers.append(nn.ReLU())
-        #     layers.append(nn.MaxPool2d(2))
-        #     in_channels = NUM_HIDDEN_CHANNELS
-        # layers.append(nn.Flatten())
         layers = [
             nn.Linear(in_features=768, out_features=NUM_HIDDEN_CHANNELS),
             nn.ReLU(),
@@ -73,16 +40,6 @@ class ProtoNetNetwork(nn.Module):
         self.to(device)
 
     def forward(self, images):
-        """Computes the latent representation of a batch of images.
-
-        Args:
-            images (Tensor): batch of Omniglot images
-                shape (num_images, channels, height, width)
-
-        Returns:
-            a Tensor containing a batch of latent representations
-                shape (num_images, latents)
-        """
         return self._layers(images)
 
 
@@ -156,14 +113,6 @@ class ProtoNet:
             images_query = images_query.to(self.device)
             labels_query = labels_query.to(self.device)
 
-            ### START CODE HERE ###
-            # TODO: finish implementing this method.
-            # For a given task, compute the prototypes and the protonet loss.
-            # Use F.cross_entropy to compute classification losses.
-            # Use util.score to compute accuracies.
-            # Make sure to populate loss_batch, accuracy_support_batch, and
-            # accuracy_query_batch.
-
             def _logit(x, p):
                 return -((x.unsqueeze(1) - p.unsqueeze(0)) ** 2).sum(-1)
 
@@ -196,7 +145,6 @@ class ProtoNet:
             accuracy_query_batch.append(
                 Evaluation.score(logits=query_logits.detach(), labels=labels_query)
             )
-            ### END CODE HERE ###
 
         return (
             torch.mean(torch.stack(loss_batch)),
