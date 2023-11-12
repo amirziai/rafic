@@ -84,6 +84,7 @@ class BirdsDataset(dataset.Dataset):
         seed=None,
         search_index_big=True,
         faiss_index_path=None,
+        use_text_label: bool = False,
     ):
         """Inits Caltech-UCSD Birds-200-2011 Dataset.
 
@@ -100,6 +101,7 @@ class BirdsDataset(dataset.Dataset):
             ),
             faiss_index_path=faiss_index_path,
         )
+        self._use_text_label = use_text_label
 
         # download the data
         if not os.path.isdir(config.BASE_PATH):
@@ -161,17 +163,24 @@ class BirdsDataset(dataset.Dataset):
                 all_file_paths, size=self._num_support + self._num_query, replace=False
             )
             embs = [load_embedding(file_path) for file_path in sampled_file_paths]
-            # label = int(
-            #     self._birds_folders[class_idx].split("/")[-1].split(".")[0]
-            # )  # get the label from the folder name
+            label = (
+                " ".join(
+                    self._birds_folders[class_idx]
+                    .split("/")[-1]
+                    .split(".")[-1]
+                    .split("_")
+                )
+                if self._use_text_label
+                else idx
+            )
 
             # split sampled examples into support and query
             embs_supp = embs[: self._num_support]
             embs_supp_aug = self._augment(embs_supp)
             images_support.extend(embs_supp_aug)
             images_query.extend(embs[self._num_support :])
-            labels_support.extend([idx] * self.num_supp_aug)
-            labels_query.extend([idx] * self._num_query)
+            labels_support.extend([label] * self.num_supp_aug)
+            labels_query.extend([label] * self._num_query)
 
         # aggregate into tensors
         images_support = torch.stack(
@@ -234,6 +243,7 @@ def get_birds_dataloader(
     search_index_big=True,
     seed=None,
     faiss_index_path=config.PATH_FAISS_INDEX,
+    use_text_label=False,
 ):
     """Returns a dataloader.DataLoader for Caltech-UCSD Birds-200-2011.
 
@@ -280,6 +290,7 @@ def get_birds_dataloader(
             num_aug=num_aug,
             search_index_big=search_index_big,
             faiss_index_path=faiss_index_path,
+            use_text_label=use_text_label,
         ),
         batch_size=batch_size,
         sampler=sampler_obj,

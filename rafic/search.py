@@ -58,7 +58,7 @@ class CLIPSearch:
         Nearest neighbor search given an input text.
         Will encode the text first and then run `search_given_emb`.
         """
-        emb_text = self._get_text_emb(text=text)
+        emb_text = self.get_text_emb(text=text)
         return self.search_given_emb(emb=emb_text, n=n)
 
     def show_images_by_key(self, keys: t.List[str]) -> None:
@@ -84,7 +84,7 @@ class CLIPSearch:
         logger.info("Loading done!")
         return obj
 
-    def _get_text_emb(self, text: str) -> np.ndarray:
+    def get_text_emb(self, text: str) -> np.ndarray:
         logger.info("Encoding input text query...")
         with torch.no_grad():
             text = clip.tokenize(text).to(self._device)
