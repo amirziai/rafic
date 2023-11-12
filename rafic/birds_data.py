@@ -164,7 +164,11 @@ class BirdsDataset(dataset.Dataset):
                 all_file_paths, size=self._num_support + self._num_query, replace=False
             )
             embs = [load_embedding(file_path) for file_path in sampled_file_paths]
-            label = idx
+            label = (
+                int(self._birds_folders[class_idx].split("/")[-1].split(".")[0])
+                if self._keep_original_label_idx
+                else idx
+            )
             # split sampled examples into support and query
             embs_supp = embs[: self._num_support]
             embs_supp_aug = self._augment(embs_supp)
