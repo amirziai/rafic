@@ -6,7 +6,7 @@ from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 from sklearn.metrics.pairwise import cosine_similarity
 from tqdm.auto import tqdm
 
-from . import search
+from . import birds_data, search
 
 
 class Evaluation:
@@ -120,22 +120,23 @@ class Evaluation:
     @staticmethod
     def eval_text_encoder(dl):
         cs = search.CLIPSearch()
+        i2l = birds_data.get_class_index_to_label()
 
         correct = 0
         tot = 0
 
         for data_batch in dl:
             for _, _, x_ts, y_ts in data_batch:
-                labels = set()
+                ys = set()
                 tot += len(x_ts)
-                for label in y_ts:
-                    labels.add(label.item())
-                labels = sorted(labels)
-                l2i = {l: i for i, l in enumerate(labels)}
+                for y in y_ts:
+                    ys.add(y.item())
+                ys = sorted(ys)
+                y2i = {y: i for i, y in enumerate(ys)}
                 embs_text = np.vstack(
-                    [cs.get_text_emb(f"a photo of a {label}") for label in labels]
+                    [cs.get_text_emb(f"a photo of a {i2l[y]}") for y in ys]
                 )
                 ps = cosine_similarity(x_ts.numpy(), embs_text).argmax(axis=1)
-                correct += sum(l2i[label.item()] == p for label, p in zip(y_ts, ps))
+                correct += sum(y2i[y.item()] == p for y, p in zip(y_ts, ps))
 
         return correct / tot

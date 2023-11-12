@@ -1,6 +1,7 @@
 """Dataloading for The Caltech-UCSD Birds-200-2011 Dataset."""
 import os
 import glob
+import typing as t
 
 import numpy as np
 import torch
@@ -84,7 +85,7 @@ class BirdsDataset(dataset.Dataset):
         seed=None,
         search_index_big=True,
         faiss_index_path=None,
-        use_text_label: bool = False,
+        keep_original_label_idx: bool = False,
     ):
         """Inits Caltech-UCSD Birds-200-2011 Dataset.
 
@@ -101,7 +102,7 @@ class BirdsDataset(dataset.Dataset):
             ),
             faiss_index_path=faiss_index_path,
         )
-        self._use_text_label = use_text_label
+        self._keep_original_label_idx = keep_original_label_idx
 
         # download the data
         if not os.path.isdir(config.BASE_PATH):
@@ -163,17 +164,7 @@ class BirdsDataset(dataset.Dataset):
                 all_file_paths, size=self._num_support + self._num_query, replace=False
             )
             embs = [load_embedding(file_path) for file_path in sampled_file_paths]
-            label = (
-                " ".join(
-                    self._birds_folders[class_idx]
-                    .split("/")[-1]
-                    .split(".")[-1]
-                    .split("_")
-                )
-                if self._use_text_label
-                else idx
-            )
-
+            label = idx
             # split sampled examples into support and query
             embs_supp = embs[: self._num_support]
             embs_supp_aug = self._augment(embs_supp)
@@ -243,7 +234,7 @@ def get_birds_dataloader(
     search_index_big=True,
     seed=None,
     faiss_index_path=config.PATH_FAISS_INDEX,
-    use_text_label=False,
+    keep_original_label_idx: bool = False,
 ):
     """Returns a dataloader.DataLoader for Caltech-UCSD Birds-200-2011.
 
@@ -290,7 +281,7 @@ def get_birds_dataloader(
             num_aug=num_aug,
             search_index_big=search_index_big,
             faiss_index_path=faiss_index_path,
-            use_text_label=use_text_label,
+            keep_original_label_idx=keep_original_label_idx,
         ),
         batch_size=batch_size,
         sampler=sampler_obj,
@@ -299,3 +290,11 @@ def get_birds_dataloader(
         pin_memory=torch.cuda.is_available(),
         drop_last=True,
     )
+
+
+def get_class_index_to_label() -> t.Dict[int, str]:
+    i2l = dict()
+    for p in glob.glob(f"{config.BASE_PATH}/*"):
+        idx, name = p.split("/")[-1].split(".")
+        i2l[idx] = name
+    return i2l
