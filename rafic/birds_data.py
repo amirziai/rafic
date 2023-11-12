@@ -294,7 +294,7 @@ def get_birds_dataloader(
 
 def get_class_index_to_label() -> t.Dict[int, str]:
     i2l = dict()
-    for p in glob.glob(f"{config.BASE_PATH}/*"):
+    for p in glob.glob(f"{config.BASE_PATH}/images/*"):
         idx, name = p.split("/")[-1].split(".")
         i2l[idx] = name
     return i2l
