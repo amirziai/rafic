@@ -134,7 +134,7 @@ class Evaluation:
                 ys = sorted(ys)
                 y2i = {y: i for i, y in enumerate(ys)}
                 embs_text = np.vstack(
-                    [cs.get_text_emb(f"a photo of a {i2l[y]}") for y in ys]
+                    [cs.get_text_emb(f"a photo of a {i2l[y]} bird") for y in ys]
                 )
                 ps = cosine_similarity(x_ts.numpy(), embs_text).argmax(axis=1)
                 correct += sum(y2i[y.item()] == p for y, p in zip(y_ts, ps))
