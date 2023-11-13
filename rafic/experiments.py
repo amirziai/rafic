@@ -53,7 +53,7 @@ def non_parametric_image_embeddings(
 
 
 def logistic_regression(
-    k_vals: KS, a_vals: AS, seed: int = config.SEED
+    k_vals: t.Sequence[int] = KS, a_vals: t.Sequence[int] = AS, seed: int = config.SEED
 ) -> pd.DataFrame:
     def _fn(k, a):
         return Evaluation.eval_clf(dl=_get_val_dataloader(k=k, a=a), seed=seed)
