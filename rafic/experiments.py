@@ -10,18 +10,19 @@ from .evaluation import Evaluation
 
 KS = [1, 2, 5]
 AS = [0, 1, 2, 5]
+N = 5
 
 
 def _get_val_dataloader(k, a):
     return get_birds_dataloader(
         split="val",
         batch_size=16,
-        num_way=5,
+        num_way=N,
         num_support=k,
         num_query=1,
         num_tasks_per_epoch=200,
         num_workers=8,
-        seed=0,
+        seed=config.SEED,
         num_aug=a,
     )
 
@@ -30,12 +31,12 @@ def zero_shot_text_label():
     dl = get_birds_dataloader(
         split="val",
         batch_size=16,
-        num_way=5,
+        num_way=N,
         num_support=1,
         num_query=1,
         num_tasks_per_epoch=200,
         num_workers=8,
-        seed=0,
+        seed=config.SEED,
         num_aug=0,
         keep_original_label_idx=True,
     )

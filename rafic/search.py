@@ -84,6 +84,7 @@ class CLIPSearch:
         logger.info("Loading done!")
         return obj
 
+    @functools.lru_cache()
     def get_text_emb(self, text: str) -> np.ndarray:
         logger.info("Encoding input text query...")
         with torch.no_grad():
