@@ -1,3 +1,4 @@
+import functools
 import typing as t
 
 import pandas as pd
@@ -61,12 +62,16 @@ def non_parametric_image_embeddings(
     n: int = N,
     q: int = Q,
 ) -> pd.DataFrame:
-    def _fn(k, a):
-        return Evaluation.eval_non_parametric_nn(
-            dl=_get_val_dataloader(k=k, a=a, n=n, q=q)
-        )
-
-    return _run(k_vals=k_vals, a_vals=a_vals, acc_fn=_fn)
+    acc_fn = functools.partial(
+        Evaluation.eval_non_parametric_nn,
+    )
+    return _run(
+        k_vals=k_vals,
+        a_vals=a_vals,
+        acc_fn=acc_fn,
+        n=n,
+        q=q,
+    )
 
 
 def logistic_regression(
@@ -76,12 +81,17 @@ def logistic_regression(
     n: int = N,
     q: int = Q,
 ) -> pd.DataFrame:
-    def _fn(k, a):
-        return Evaluation.eval_clf(
-            dl=_get_val_dataloader(k=k, a=a, n=n, q=q), seed=seed
-        )
-
-    return _run(k_vals=k_vals, a_vals=a_vals, acc_fn=_fn)
+    acc_fn = functools.partial(
+        Evaluation.eval_clf,
+        seed=seed,
+    )
+    return _run(
+        k_vals=k_vals,
+        a_vals=a_vals,
+        acc_fn=acc_fn,
+        n=n,
+        q=q,
+    )
 
 
 def _run(
@@ -92,7 +102,18 @@ def _run(
     q: int = Q,
 ) -> pd.DataFrame:
     return pd.DataFrame(
-        dict(num_support=k, num_aug=a, acc=acc_fn(k=k, a=a, n=n, q=q))
+        dict(
+            num_support=k,
+            num_aug=a,
+            acc=acc_fn(
+                dl=_get_val_dataloader(
+                    k=k,
+                    a=a,
+                    n=n,
+                    q=q,
+                )
+            ),
+        )
         for k in k_vals
         for a in a_vals
     )
