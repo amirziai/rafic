@@ -15,7 +15,7 @@ from . import config, search
 # Overall we have 200 classes
 # max pictures for a bird is 60
 # min pictures for a bird is 41
-NUM_TRAIN_CLASSES = 130
+NUM_TRAIN_CLASSES = 140
 NUM_VAL_CLASSES = 30
 NUM_TEST_CLASSES = 30
 NUM_SAMPLES_PER_CLASS = 41
