@@ -17,7 +17,7 @@ NUM_TASKS_PER_EPOCH = 200
 NUM_WORKERS = 8
 
 
-def _get_val_dataloader(k, a, n: int = N, q: int = Q) -> float:
+def _get_val_dataloader(k, a, n: int = N, q: int = Q, seed: int = config.SEED) -> float:
     return get_birds_dataloader(
         split="val",
         batch_size=BATCH_SIZE,
@@ -26,9 +26,14 @@ def _get_val_dataloader(k, a, n: int = N, q: int = Q) -> float:
         num_query=q,
         num_tasks_per_epoch=NUM_TASKS_PER_EPOCH,
         num_workers=NUM_WORKERS,
-        seed=config.SEED,
+        seed=seed,
         num_aug=a,
     )
+
+
+def random(n: int = N, q: int = Q, seed: int = config.SEED) -> float:
+    dl = _get_val_dataloader(k=1, a=0, n=n, q=q, seed=seed)
+    return Evaluation.eval_random(dl=dl, seed=seed)
 
 
 def zero_shot_text_label(
