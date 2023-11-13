@@ -103,9 +103,11 @@ class Evaluation:
 
     @staticmethod
     def _rand(data):
-        # TODO: only works with Q=1
         _, _, _, y_ts = data
-        ps = np.random.choice(np.unique(y_ts), len(y_ts), replace=False)
+        uniq = np.unique(y_ts)
+        # this approach doesn't know that we have exactly Q
+        # labels from each class, so it's probably working worse
+        ps = np.random.choice(uniq, len(y_ts), replace=True)
         correct = np.sum(y_ts.numpy() == ps)
         return correct, len(ps)
 
