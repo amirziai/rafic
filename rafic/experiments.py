@@ -11,7 +11,7 @@ from .evaluation import Evaluation
 K_VALS = (1, 2, 5)
 A_VALS = (0, 1, 2, 5)
 N = 10
-Q = 10
+Q = 5
 BATCH_SIZE = 16
 NUM_TASKS_PER_EPOCH = 200
 NUM_WORKERS = 8
