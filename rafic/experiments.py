@@ -8,8 +8,8 @@ from .birds_data import get_birds_dataloader
 from .evaluation import Evaluation
 
 
-KS = [1, 2, 5]
-AS = [0, 1, 2, 5]
+KS = (1, 2, 5)
+AS = (0, 1, 2, 5)
 N = 5
 
 
@@ -43,7 +43,9 @@ def zero_shot_text_label():
     return Evaluation.eval_text_encoder(dl)
 
 
-def non_parametric_image_embeddings(k_vals: KS, a_vals: AS) -> pd.DataFrame:
+def non_parametric_image_embeddings(
+    k_vals: t.Sequence[int] = KS, a_vals: t.Sequence[int] = AS
+) -> pd.DataFrame:
     def _fn(k, a):
         return Evaluation.eval_non_parametric_nn(dl=_get_val_dataloader(k=k, a=a))
 
@@ -59,7 +61,9 @@ def logistic_regression(
     return _run(k_vals=k_vals, a_vals=a_vals, acc_fn=_fn)
 
 
-def _run(k_vals: KS, a_vals: AS, acc_fn: t.Callable) -> pd.DataFrame:
+def _run(
+    k_vals: t.Sequence[int], a_vals: t.Sequence[int], acc_fn: t.Callable
+) -> pd.DataFrame:
     return pd.DataFrame(
         dict(num_support=k, num_aug=a, acc=acc_fn(k=k, a=a))
         for k in k_vals
