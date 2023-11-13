@@ -1,5 +1,6 @@
 """Evaluation component for the model."""
 
+import functools
 import torch
 import numpy as np
 from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
@@ -69,7 +70,8 @@ class Evaluation:
 
     @classmethod
     def eval_clf(cls, dl, seed):
-        return cls._eval_per_instance(dl=dl, fn_eval=cls._clf, seed=seed)
+        _clf = functools.partial(cls._clf, seed=seed)
+        return cls._eval_per_instance(dl=dl, fn_eval=_clf, seed=seed)
 
     @staticmethod
     def _eval_per_instance(dl, fn_eval, seed=None):
@@ -101,17 +103,22 @@ class Evaluation:
 
     @staticmethod
     def _rand(data):
+        # TODO: only works with Q=1
         _, _, _, y_ts = data
         ps = np.random.choice(np.unique(y_ts), len(y_ts), replace=False)
         correct = np.sum(y_ts.numpy() == ps)
         return correct, len(ps)
 
     @staticmethod
-    def _clf(data):
+    def _clf(data, seed):
         x_tr, y_tr, x_ts, y_ts = data
         w = len(np.unique(y_tr))
         n = len(x_tr) // w
-        clf = LogisticRegressionCV(cv=min(n, 3)) if n >= 2 else LogisticRegression()
+        clf = (
+            LogisticRegressionCV(cv=min(n, 3), random_state=seed)
+            if n >= 2
+            else LogisticRegression(random_state=seed)
+        )
         clf.fit(x_tr.numpy(), y_tr.numpy())
         ps = clf.predict(x_ts.numpy())
         correct = np.sum(ps == y_ts.numpy())
