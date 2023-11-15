@@ -10,7 +10,7 @@ from torch.utils.data import dataset, sampler, dataloader
 from torchvision import transforms
 from PIL import Image
 
-from . import config, search
+import config, search
 
 # Overall we have 200 classes
 # max pictures for a bird is 60
