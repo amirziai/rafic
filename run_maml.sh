@@ -15,3 +15,5 @@ python3 -m rafic.maml --inner_lr 0.04 --num_train_iterations 1000 --num_inner_st
 python3 -m rafic.maml --inner_lr 0.04 --num_train_iterations 1000 --num_inner_steps 5 --batch_size 64 --device gpu --num_way 5 --num_support 5 --num_aug 1
 python3 -m rafic.maml --inner_lr 0.04 --num_train_iterations 1000 --num_inner_steps 5 --batch_size 64 --device gpu --num_way 5 --num_support 5 --num_aug 2
 python3 -m rafic.maml --inner_lr 0.04 --num_train_iterations 1000 --num_inner_steps 5 --batch_size 64 --device gpu --num_way 5 --num_support 5 --num_aug 5
+
+# --test --checkpoint_step 900
