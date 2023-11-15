@@ -27,8 +27,8 @@ INPUT_CLIP_EMD_DIM = 768
 NUM_HIDDEN_FEATURES = [64]
 SUMMARY_INTERVAL = 10
 SAVE_INTERVAL = 100
-LOG_INTERVAL = 100
-VAL_INTERVAL = 100
+LOG_INTERVAL = 250
+VAL_INTERVAL = 250
 NUM_TEST_TASKS = 600
 
 class MAML:
@@ -464,7 +464,7 @@ def main(args):
 
     log_dir = args.log_dir
     if log_dir is None:
-        log_dir = f'./logs/maml/birds.way_{args.num_way}.support_{args.num_support}.query_{args.num_query}.inner_steps_{args.num_inner_steps}.inner_lr_{args.inner_lr}.learn_inner_lrs_{args.learn_inner_lrs}.outer_lr_{args.outer_lr}.batch_size_{args.batch_size}'  # pylint: disable=line-too-long
+        log_dir = f'./logs/maml/birds.way_{args.num_way}.support_{args.num_support}.query_{args.num_query}.aug_{args.num_aug}.inner_steps_{args.num_inner_steps}.inner_lr_{args.inner_lr}.learn_inner_lrs_{args.learn_inner_lrs}.outer_lr_{args.outer_lr}.batch_size_{args.batch_size}'  # pylint: disable=line-too-long
     print(f'log_dir: {log_dir}')
     writer = tensorboard.SummaryWriter(log_dir=log_dir)
 
