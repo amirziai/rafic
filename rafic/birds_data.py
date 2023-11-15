@@ -1,6 +1,8 @@
 """Dataloading for The Caltech-UCSD Birds-200-2011 Dataset."""
+import functools
 import os
 import glob
+import pickle
 import typing as t
 
 import numpy as np
@@ -63,9 +65,15 @@ def load_embedding(path: str) -> torch.Tensor:
     return torch.tensor(np.load(path_np))
 
 
+@functools.lru_cache()
+def _get_laion_db():
+    db = pickle.load(open(config.PATH_SEARCH, "rb"))
+    keys, embs = db["idx_to_key_lookup"], db["embs"]
+    return {k: e for k, e in zip(keys, embs)}
+
+
 def load_embedding_aug_by_key(key: str) -> torch.Tensor:
-    path_np = f"{config.PATH_SEARCH_EMB}/{key}.np"
-    return torch.tensor(np.load(path_np))
+    return _get_laion_db()[key]
 
 
 class BirdsDataset(dataset.Dataset):
