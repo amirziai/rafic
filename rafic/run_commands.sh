@@ -1,0 +1,1 @@
+python3 maml.py --inner_lr 0.04 --num_inner_steps 5 --batch_size 4 --device gpu --num_way 5 --num_support 3 --num_query 10 --num_aug 0
