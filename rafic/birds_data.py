@@ -9,10 +9,10 @@ import numpy as np
 import torch
 from torch.utils.data import dataset, sampler, dataloader
 
-# from torchvision import transforms
-# from PIL import Image
+from torchvision import transforms
+from PIL import Image
 
-from . import config, search
+import config, search
 
 # Overall we have 200 classes
 # max pictures for a bird is 60
@@ -27,28 +27,28 @@ def get_rng(seed):
     return np.random.default_rng(seed) if seed is not None else np.random.default_rng()
 
 
-# def load_image(file_path):
-#     """Loads and transforms an Caltech-UCSD Birds-200-2011 image.
-#
-#     Args:
-#         file_path (str): file path of image
-#
-#     Returns:
-#         a Tensor containing image data
-#             shape (3, 224, 224)
-#     """
-#     transform = transforms.Compose(
-#         [
-#             transforms.Resize(256),
-#             transforms.CenterCrop(224),
-#             transforms.ToTensor(),
-#             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-#         ]
-#     )
-#
-#     image = Image.open(file_path)
-#     tensor = transform(image)
-#     return tensor
+def load_image(file_path):
+    """Loads and transforms an Caltech-UCSD Birds-200-2011 image.
+
+    Args:
+        file_path (str): file path of image
+
+    Returns:
+        a Tensor containing image data
+            shape (3, 224, 224)
+    """
+    transform = transforms.Compose(
+        [
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ]
+    )
+
+    image = Image.open(file_path).convert("RGB") # handle greyscale images
+    tensor = transform(image)
+    return tensor
 
 
 def load_embedding(path: str) -> torch.Tensor:
