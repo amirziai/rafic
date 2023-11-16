@@ -69,7 +69,7 @@ def load_embedding(path: str) -> torch.Tensor:
 def _get_laion_db():
     db = pickle.load(open(config.PATH_SEARCH, "rb"))
     keys, embs = db["idx_to_key_lookup"], db["embs"]
-    return {k: e for k, e in zip(keys, embs)}
+    return {k: torch.tensor(e) for k, e in zip(keys, embs)}
 
 
 def load_embedding_aug_by_key(key: str) -> torch.Tensor:
@@ -186,6 +186,7 @@ class BirdsDataset(dataset.Dataset):
             labels_query.extend([label] * self._num_query)
 
         # aggregate into tensors
+        # images_support = [torch.from_numpy(x) if isinstance(x, np.ndarray) else x for x in images_support]
         images_support = torch.stack(
             images_support
         ).float()  # shape (N*S, D) where D is the size of CLIP embeddings (e.g. 768)
@@ -201,6 +202,7 @@ class BirdsDataset(dataset.Dataset):
         emb = torch.stack(embs_supp).mean(axis=0).numpy()
         keys = self._search.search_given_emb(emb=emb, n=self._num_aug)
         embs_aug = list(map(load_embedding_aug_by_key, keys))
+        # embs_aug = [torch.from_numpy(x) if isinstance(x, np.ndarray) else x for x in embs_aug]
         comb = embs_supp + embs_aug
         return comb
 
