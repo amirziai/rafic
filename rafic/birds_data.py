@@ -186,10 +186,11 @@ class BirdsDataset(dataset.Dataset):
             labels_query.extend([label] * self._num_query)
 
         # aggregate into tensors
-        # images_support = [torch.from_numpy(x) if isinstance(x, np.ndarray) else x for x in images_support]
         images_support = torch.stack(
             images_support
-        ).float()  # shape (N*S, D) where D is the size of CLIP embeddings (e.g. 768)
+        ).float()  # shape (N*(S+A), D) where D is the size of CLIP embeddings (e.g. 768)
+        # TODO: this is just to profile, it has no effect, remove it
+        _ = self._aug(emb=torch.rand(len(images_support) // self._num_support, 768))
         labels_support = torch.tensor(labels_support)  # shape (N*S)
         images_query = torch.stack(images_query).float()
         labels_query = torch.tensor(labels_query)
@@ -200,11 +201,13 @@ class BirdsDataset(dataset.Dataset):
         if self._num_aug == 0:
             return embs_supp
         emb = torch.stack(embs_supp).mean(axis=0).numpy()
-        keys = self._search.search_given_emb(emb=emb, n=self._num_aug)
-        embs_aug = list(map(load_embedding_aug_by_key, keys))
-        # embs_aug = [torch.from_numpy(x) if isinstance(x, np.ndarray) else x for x in embs_aug]
+        embs_aug = self._aug(emb=emb)
         comb = embs_supp + embs_aug
         return comb
+
+    def _aug(self, emb):
+        keys = self._search.search_given_emb(emb=emb, n=self._num_aug)
+        return list(map(load_embedding_aug_by_key, keys))
 
 
 class BirdsSampler(sampler.Sampler):
