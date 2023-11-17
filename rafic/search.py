@@ -42,6 +42,9 @@ class CLIPSearch:
         nn = faiss.read_index(p, faiss.IO_FLAG_MMAP | faiss.IO_FLAG_READ_ONLY)
         logger.info(f"faiss index loaded!")
         self._faiss_index = nn
+        logger.info("Loading the index...")
+        self._index = pickle.load(open(self.path, "rb"))
+        logger.info("Loading done!")
 
     def search_given_emb(self, emb: np.ndarray, n: int) -> t.List[str]:
         """
@@ -92,13 +95,13 @@ class CLIPSearch:
     def _idx_to_key_lookup(self) -> t.List[str]:
         return self._index["idx_to_key_lookup"]
 
-    @property
-    @functools.lru_cache()
-    def _index(self) -> dict:
-        logger.info("Loading the index...")
-        obj = pickle.load(open(self.path, "rb"))
-        logger.info("Loading done!")
-        return obj
+    # @property
+    # @functools.lru_cache()
+    # def _index(self) -> dict:
+    #     logger.info("Loading the index...")
+    #     obj = pickle.load(open(self.path, "rb"))
+    #     logger.info("Loading done!")
+    #     return obj
 
     @functools.lru_cache()
     def get_text_emb(self, text: str) -> np.ndarray:
