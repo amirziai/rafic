@@ -58,7 +58,7 @@ class CLIPSearch:
         embs = normalize(embs, axis=1)
         _, idxs = self._faiss_index.search(embs, k=n)
         return [
-            [self._idx_to_key_lookup[embs[i][j]] for j in range(n)]
+            [self._idx_to_key_lookup[idxs[i][j].item()] for j in range(n)]
             for i in range(len(idxs))
         ]
 
