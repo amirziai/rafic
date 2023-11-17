@@ -25,7 +25,7 @@ from . import config
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=False)
+@dataclass(frozen=True)
 class CLIPSearch:
     """
     Path to the embeddings file.
@@ -35,16 +35,6 @@ class CLIPSearch:
     path: str = config.PATH_SEARCH
     faiss_index_path: str = config.PATH_FAISS_INDEX
     image_path_base: str = config.PATH_IMAGES_LAION
-
-    def __post_init__(self):
-        p = self.faiss_index_path
-        print(f"Loading faiss index from {p}...")
-        nn = faiss.read_index(p, faiss.IO_FLAG_MMAP | faiss.IO_FLAG_READ_ONLY)
-        print(f"faiss index loaded!")
-        self._faiss_index = nn
-        print("Loading the index...")
-        self._index = pickle.load(open(self.path, "rb"))
-        print("Loading done!")
 
     def search_given_emb(self, emb: np.ndarray, n: int) -> t.List[str]:
         """
@@ -95,13 +85,13 @@ class CLIPSearch:
     def _idx_to_key_lookup(self) -> t.List[str]:
         return self._index["idx_to_key_lookup"]
 
-    # @property
-    # @functools.lru_cache()
-    # def _index(self) -> dict:
-    #     logger.info("Loading the index...")
-    #     obj = pickle.load(open(self.path, "rb"))
-    #     logger.info("Loading done!")
-    #     return obj
+    @property
+    @functools.lru_cache()
+    def _index(self) -> dict:
+        logger.info("Loading the index...")
+        obj = pickle.load(open(self.path, "rb"))
+        logger.info("Loading done!")
+        return obj
 
     @functools.lru_cache()
     def get_text_emb(self, text: str) -> np.ndarray:
@@ -125,7 +115,11 @@ class CLIPSearch:
     def _device(self):
         return "cuda" if torch.cuda.is_available() else "cpu"
 
-    # @property
-    # @functools.lru_cache()
-    # def _faiss_index(self):
-    #     pass
+    @property
+    @functools.lru_cache()
+    def _faiss_index(self):
+        p = self.faiss_index_path
+        print(f"Loading faiss index from {p}...")
+        nn = faiss.read_index(p, faiss.IO_FLAG_MMAP | faiss.IO_FLAG_READ_ONLY)
+        print(f"faiss index loaded!")
+        return nn

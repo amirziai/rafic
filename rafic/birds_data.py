@@ -67,9 +67,9 @@ def load_embedding(path: str) -> torch.Tensor:
 
 @functools.lru_cache()
 def _get_laion_db():
-    print('loading laion db...')
+    print("loading laion db...")
     db = pickle.load(open(config.PATH_SEARCH, "rb"))
-    print('laion db loaded!')
+    print("laion db loaded!")
     keys, embs = db["idx_to_key_lookup"], db["embs"]
     return {k: torch.tensor(e) for k, e in zip(keys, embs)}
 
