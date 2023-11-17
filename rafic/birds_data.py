@@ -189,10 +189,6 @@ class BirdsDataset(dataset.Dataset):
         images_support = torch.stack(
             images_support
         ).float()  # shape (N*(S+A), D) where D is the size of CLIP embeddings (e.g. 768)
-        # TODO: this is just to profile, it has no effect, remove it
-        a, b = len(images_support) // self._num_support, 768
-        keys = self._search.search_given_embs(embs=np.random.rand(a, b), n=1)
-        # embs2 = list(map(load_embedding_aug_by_key, [k for ks in keys for k in ks]))
         labels_support = torch.tensor(labels_support)  # shape (N*S)
         images_query = torch.stack(images_query).float()
         labels_query = torch.tensor(labels_query)
@@ -203,13 +199,10 @@ class BirdsDataset(dataset.Dataset):
         if self._num_aug == 0:
             return embs_supp
         emb = torch.stack(embs_supp).mean(axis=0).numpy()
-        embs_aug = self._aug(emb=emb)
+        keys = self._search.search_given_emb(emb=emb, n=self._num_aug)
+        embs_aug = list(map(load_embedding_aug_by_key, keys))
         comb = embs_supp + embs_aug
         return comb
-
-    def _aug(self, emb):
-        keys = self._search.search_given_emb(emb=emb, n=self._num_aug)
-        return list(map(load_embedding_aug_by_key, keys))
 
 
 class BirdsSampler(sampler.Sampler):
