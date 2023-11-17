@@ -38,13 +38,13 @@ class CLIPSearch:
 
     def __post_init__(self):
         p = self.faiss_index_path
-        logger.info(f"Loading faiss index from {p}...")
+        print(f"Loading faiss index from {p}...")
         nn = faiss.read_index(p, faiss.IO_FLAG_MMAP | faiss.IO_FLAG_READ_ONLY)
-        logger.info(f"faiss index loaded!")
+        print(f"faiss index loaded!")
         self._faiss_index = nn
-        logger.info("Loading the index...")
+        print("Loading the index...")
         self._index = pickle.load(open(self.path, "rb"))
-        logger.info("Loading done!")
+        print("Loading done!")
 
     def search_given_emb(self, emb: np.ndarray, n: int) -> t.List[str]:
         """

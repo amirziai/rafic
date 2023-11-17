@@ -242,7 +242,7 @@ def get_birds_dataloader(
     num_query,
     num_tasks_per_epoch,
     num_aug=0,
-    num_workers=2,
+    num_workers=config.NUM_WORKERS,
     search_index_big=True,
     seed=None,
     faiss_index_path=config.PATH_FAISS_INDEX,

@@ -6,3 +6,4 @@ PATH_FAISS_INDEX = f"{_PATH_BASE_LAION}/faiss/clip-laion-400m-1m-faiss.index"
 PATH_IMAGES_LAION = f"{_PATH_BASE_LAION}/images"
 CLIP_MODEL_TYPE = "ViT-L/14@336px"
 SEED = 0
+NUM_WORKERS = 2
