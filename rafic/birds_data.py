@@ -12,7 +12,7 @@ from torch.utils.data import dataset, sampler, dataloader
 from torchvision import transforms
 from PIL import Image
 
-import config, search
+from . import config, search
 
 # Overall we have 200 classes
 # max pictures for a bird is 60
@@ -46,7 +46,7 @@ def load_image(file_path):
         ]
     )
 
-    image = Image.open(file_path).convert("RGB") # handle greyscale images
+    image = Image.open(file_path).convert("RGB")  # handle greyscale images
     tensor = transform(image)
     return tensor
 

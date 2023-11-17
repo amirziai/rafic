@@ -19,7 +19,7 @@ except ImportError:
     """
     )
 
-import config
+from . import config
 
 
 logger = logging.getLogger(__name__)
@@ -52,6 +52,15 @@ class CLIPSearch:
         _, idxs = self._faiss_index.search(emb, k=n)
         idxs = idxs.squeeze() if n >= 2 else [idxs.item()]
         return [self._idx_to_key_lookup[idx] for idx in idxs]
+
+    def search_given_embs(self, embs: np.ndarray, n: int) -> t.List[t.List[str]]:
+        assert len(embs.shape) == 2, "must be 2 dimensional"
+        embs = normalize(embs, axis=1)
+        _, idxs = self._faiss_index.search(embs, k=n)
+        return [
+            [self._idx_to_key_lookup[embs[i][j]] for j in range(n)]
+            for i in range(len(idxs))
+        ]
 
     def search_given_text(self, text: str, n: int) -> t.List[str]:
         """
@@ -111,6 +120,6 @@ class CLIPSearch:
     def _faiss_index(self):
         p = self.faiss_index_path
         logger.info(f"Loading faiss index from {p}...")
-        nn = faiss.read_index(p)
+        nn = faiss.read_index(p, faiss.IO_FLAG_MMAP | faiss.IO_FLAG_READ_ONLY)
         logger.info(f"faiss index loaded!")
         return nn
