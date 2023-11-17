@@ -1,22 +1,19 @@
 """Implementation of model-agnostic meta-learning."""
-import sys
 
-sys.path.append("..")
 import argparse
 import os
 
 import numpy as np
 import torch
 
-import torch.multiprocessing
-
-torch.multiprocessing.set_sharing_strategy("file_system")
-
 from torch import nn
+import torch.multiprocessing
 import torch.nn.functional as F
 from torch.utils import tensorboard
 
 from . import birds_data, util
+
+torch.multiprocessing.set_sharing_strategy("file_system")
 
 
 # MAML with FC

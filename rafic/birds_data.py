@@ -14,6 +14,8 @@ from PIL import Image
 
 from . import config, search
 
+torch.multiprocessing.set_sharing_strategy("file_descriptor")
+
 # Overall we have 200 classes
 # max pictures for a bird is 60
 # min pictures for a bird is 41
