@@ -25,7 +25,7 @@ from . import config
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class CLIPSearch:
     """
     Path to the embeddings file.
@@ -35,6 +35,13 @@ class CLIPSearch:
     path: str = config.PATH_SEARCH
     faiss_index_path: str = config.PATH_FAISS_INDEX
     image_path_base: str = config.PATH_IMAGES_LAION
+
+    def __post_init__(self):
+        p = self.faiss_index_path
+        logger.info(f"Loading faiss index from {p}...")
+        nn = faiss.read_index(p, faiss.IO_FLAG_MMAP | faiss.IO_FLAG_READ_ONLY)
+        logger.info(f"faiss index loaded!")
+        self._faiss_index = nn
 
     def search_given_emb(self, emb: np.ndarray, n: int) -> t.List[str]:
         """
@@ -115,11 +122,7 @@ class CLIPSearch:
     def _device(self):
         return "cuda" if torch.cuda.is_available() else "cpu"
 
-    @property
-    @functools.lru_cache()
-    def _faiss_index(self):
-        p = self.faiss_index_path
-        logger.info(f"Loading faiss index from {p}...")
-        nn = faiss.read_index(p, faiss.IO_FLAG_MMAP | faiss.IO_FLAG_READ_ONLY)
-        logger.info(f"faiss index loaded!")
-        return nn
+    # @property
+    # @functools.lru_cache()
+    # def _faiss_index(self):
+    #     pass
