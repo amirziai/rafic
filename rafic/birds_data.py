@@ -192,8 +192,7 @@ class BirdsDataset(dataset.Dataset):
         # TODO: this is just to profile, it has no effect, remove it
         a, b = len(images_support) // self._num_support, 768
         keys = self._search.search_given_embs(embs=np.random.rand(a, b), n=1)
-        embs2 = list(map(load_embedding_aug_by_key, [k for ks in keys for k in ks]))
-
+        # embs2 = list(map(load_embedding_aug_by_key, [k for ks in keys for k in ks]))
         labels_support = torch.tensor(labels_support)  # shape (N*S)
         images_query = torch.stack(images_query).float()
         labels_query = torch.tensor(labels_query)
