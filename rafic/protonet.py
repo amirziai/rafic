@@ -317,6 +317,7 @@ def main(args):
     else:
         print("Checkpoint loading skipped.")
 
+    data_set = args.dataset
     if not args.test:
         num_training_tasks = args.batch_size * (
             args.num_train_iterations - args.checkpoint_step - 1
@@ -336,6 +337,7 @@ def main(args):
             num_tasks_per_epoch=num_training_tasks,
             num_workers=args.num_workers,
             num_aug=args.num_aug,
+            data_set=data_set
         )
         dataloader_meta_val = birds_data.get_birds_dataloader(
             split="val",
@@ -346,6 +348,7 @@ def main(args):
             num_tasks_per_epoch=200,  # was batch_size * 4
             num_workers=args.num_workers,
             num_aug=args.num_aug,
+            data_set=data_set
         )
         protonet.train(dataloader_meta_train, dataloader_meta_val, writer)
     else:
@@ -364,6 +367,7 @@ def main(args):
             num_tasks_per_epoch=200,  # was NUM_TEST_TASKS
             num_workers=args.num_workers,
             num_aug=args.num_aug,
+            data_set=data_set
         )
         protonet.test(dataloader_test)
 
@@ -428,6 +432,12 @@ if __name__ == "__main__":
         type=str,
         default="inductor",
         choices=["inductor", "aot_eager", "cudagraphs"],
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="birds",
+        choices=["euro_sat"],
     )
     parser.add_argument("--cache", action="store_true")
     parser.add_argument("--device", type=str, default="cpu")
