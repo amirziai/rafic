@@ -437,7 +437,7 @@ if __name__ == "__main__":
         "--dataset",
         type=str,
         default="birds",
-        choices=["euro_sat"],
+        choices=["birds", "euro_sat"],
     )
     parser.add_argument("--cache", action="store_true")
     parser.add_argument("--device", type=str, default="cpu")
