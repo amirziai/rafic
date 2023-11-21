@@ -29,7 +29,7 @@ def encode_image(path: str) -> np.ndarray:
 
 def generate_and_save_embeddings(source_folder, dest_folder):
     """
-    Load images from a folder, generate embeddings and save them.
+    Load images from subfolders, generate embeddings and save them with nested progress bars.
 
     Args:
     - source_folder (str): Folder where images are located.
@@ -37,26 +37,35 @@ def generate_and_save_embeddings(source_folder, dest_folder):
     """
     if not os.path.exists(dest_folder):
         os.makedirs(dest_folder)
+    all_dirs = [x[0] for x in os.walk(source_folder)]
+    
+    # Overall progress bar for all directories
+    with tqdm(total=len(all_dirs), desc="Overall Progress", position=0) as pbar_all:
+        for root, dirs, files in os.walk(source_folder):
+            # Nested progress bar for files in each directory
+            with tqdm(total=len(files), desc=f"Processing {os.path.basename(root)}", position=1, leave=False) as pbar_dir:
+                for name in files:
+                    if name.lower().endswith(('.png', '.jpg', '.jpeg')):
+                        img_path = os.path.join(root, name)
+                        embedding = encode_image(img_path)
 
-    for root, dirs, files in os.walk(source_folder):
-        for name in tqdm(files, desc=f"Processing {root}"):
-            if name.lower().endswith(('.png', '.jpg', '.jpeg')):
-                img_path = os.path.join(root, name)
-                embedding = encode_image(img_path)
+                        # Construct destination path
+                        relative_path = os.path.relpath(root, source_folder)
+                        dest_path = os.path.join(dest_folder, relative_path)
 
-                # Construct destination path
-                relative_path = os.path.relpath(root, source_folder)
-                dest_path = os.path.join(dest_folder, relative_path)
+                        if not os.path.exists(dest_path):
+                            os.makedirs(dest_path)
 
-                if not os.path.exists(dest_path):
-                    os.makedirs(dest_path)
+                        # Save embedding
+                        embedding_file = name.rsplit('.', 1)[0]
+                        embedding_path = os.path.join(dest_path, embedding_file)
+                        np.save(embedding_path, embedding)
 
-                # Save embedding
-                embedding_file = name.rsplit('.', 1)[0] + '.np'
-                embedding_path = os.path.join(dest_path, embedding_file)
-                np.save(embedding_path, embedding)
+                    pbar_dir.update(1)
+            pbar_all.update(1)
 
 # Example usage
+# data_folder = "/Users/hangfeilin/Desktop/stanford_homework/CS330/cs330-project/data/birds/CUB_200_2011/CUB_200_2011/"
 data_folder = "/Users/hangfeilin/Desktop/stanford_homework/CS330/cs330-project/data/EuroSAT_RGB/"
 source_folder = data_folder + 'images'  # Path to the folder containing training images
 destination_folder = data_folder + 'embeddings'  # Path to the folder where embeddings will be saved
