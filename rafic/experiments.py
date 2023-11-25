@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from . import config
-from .birds_data import get_birds_dataloader
+from .data import get_birds_dataloader
 from .evaluation import Evaluation
 
 

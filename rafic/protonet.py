@@ -15,7 +15,7 @@ from torch import nn
 import torch.nn.functional as F  # pylint: disable=unused-import
 from torch.utils import tensorboard
 
-from . import birds_data
+from . import data
 from .evaluation import Evaluation  # pylint: disable=unused-import
 
 NUM_INPUT_CHANNELS = 1

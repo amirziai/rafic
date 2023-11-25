@@ -11,7 +11,7 @@ import torch.multiprocessing
 import torch.nn.functional as F
 from torch.utils import tensorboard
 
-from . import birds_data, util
+from . import data, util
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 

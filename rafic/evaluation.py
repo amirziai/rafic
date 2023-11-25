@@ -7,7 +7,7 @@ from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 from sklearn.metrics.pairwise import cosine_similarity
 from tqdm.auto import tqdm
 
-from . import birds_data, search
+from . import data, search
 
 
 class Evaluation:
@@ -129,7 +129,6 @@ class Evaluation:
     @staticmethod
     def eval_text_encoder(dl):
         cs = search.CLIPSearch()
-        i2l = birds_data.get_class_index_to_label()
 
         correct = 0
         tot = 0
