@@ -94,7 +94,6 @@ class _Dataset(dataset.Dataset):
         keep_original_label_idx: bool = False,
     ):
         super().__init__()
-        assert num_support + num_query <= self.min_num_samples_per_class
         self._path_base = path_base
         self._num_support = num_support
         self._num_query = num_query
@@ -120,6 +119,7 @@ class _Dataset(dataset.Dataset):
         self._class_global_index_to_key = {
             idx: cls for cls, idx in self._class_key_to_global_index.items()
         }
+        assert num_support + num_query <= self.min_num_samples_per_class
 
     def _get_metadata(self) -> dict:
         raise NotImplementedError
