@@ -177,8 +177,11 @@ class _Dataset(dataset.Dataset):
     def get_class_keys_by_split(self, split: str) -> t.List[str]:
         return self._keys[split]
 
+    def _get_embedding_path(self, key: str) -> str:
+        raise NotImplementedError
+
     def _load_embedding(self, key: str) -> torch.Tensor:
-        path = f"{self._path_base}/data/embeddings/{key}.np"
+        path = self._get_embedding_path(key=key)
         return torch.tensor(np.load(path))
 
     def _augment(self, embs_supp):
@@ -198,9 +201,8 @@ class AircraftDataset(_Dataset):
     def _get_metadata(self) -> dict:
         return json.load(open(f"{self._path_base}/metadata.json"))
 
-    def _load_embedding(self, key: str) -> torch.Tensor:
-        path = f"{self._path_base}/data/embeddings/{key}.np"
-        return torch.tensor(np.load(path))
+    def _get_embedding_path(self, key: str) -> str:
+        return f"{self._path_base}/data/embeddings/{key:07d}.np"
 
 
 class BirdsDataset(_Dataset):
@@ -239,9 +241,8 @@ class BirdsDataset(_Dataset):
             metadata[c2s[cls]][cls].append(img)
         return metadata
 
-    def _load_embedding(self, key: str) -> torch.Tensor:
-        path = f"{self._path_base}/embeddings/{key}.np"
-        return torch.tensor(np.load(path))
+    def _get_embedding_path(self, key: str) -> str:
+        return f"{self._path_base}/embeddings/{key}.np"
 
 
 # class BirdsDataset(dataset.Dataset):
