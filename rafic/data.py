@@ -308,7 +308,6 @@ def get_dataloader(
     num_way,
     num_support,
     num_query,
-    num_tasks_per_epoch,
     num_aug=0,
     num_workers=config.NUM_WORKERS,
     search_index_big=True,
@@ -325,8 +324,6 @@ def get_dataloader(
         num_way (int): number of classes per task
         num_support (int): number of support examples per class
         num_query (int): number of query examples per class
-        num_tasks_per_epoch (int): number of tasks before DataLoader is
-            exhausted
         num_aug (int): number of additional items to retrieve.
         num_workers (int): number of workers for data loading.
         search_index_big (bool): True: 1M images, False: 1K images.
@@ -359,7 +356,7 @@ def get_dataloader(
     sampler_obj = Sampler(
         choices=choices,
         num_way=num_way,
-        num_tasks=num_tasks_per_epoch,
+        num_tasks=len(choices),
         seed=seed if deterministic else None,
     )
     return dataloader.DataLoader(

@@ -95,7 +95,7 @@ class CLIPSearch:
 
     @functools.lru_cache()
     def get_text_emb(self, text: str) -> np.ndarray:
-        logger.info("Encoding input text query...")
+        logger.info(f"Encoding input text query: {text} ...")
         with torch.no_grad():
             text = clip.tokenize(text).to(self._device)
             enc = self._clip_model.encode_text(text).squeeze()

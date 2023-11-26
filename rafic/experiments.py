@@ -13,7 +13,6 @@ A_VALS = (0, 1, 2, 5)
 N = 10
 Q = 5
 BATCH_SIZE = 16
-NUM_TASKS_PER_EPOCH = 200
 NUM_WORKERS = 8
 
 
@@ -27,7 +26,6 @@ def _get_val_dataloader(
         num_way=n,
         num_support=k,
         num_query=q,
-        num_tasks_per_epoch=NUM_TASKS_PER_EPOCH,
         num_workers=NUM_WORKERS,
         seed=seed,
         num_aug=a,
@@ -51,7 +49,6 @@ def zero_shot_text_label(
         num_way=n,
         num_support=1,
         num_query=q,
-        num_tasks_per_epoch=NUM_TASKS_PER_EPOCH,
         num_workers=NUM_WORKERS,
         seed=config.SEED,
         num_aug=0,
