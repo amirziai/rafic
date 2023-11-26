@@ -22,7 +22,7 @@ def _get_val_dataloader(
 ) -> float:
     return data.get_dataloader(
         dataset_name=dataset_name,
-        split="validation",
+        split="val",
         batch_size=BATCH_SIZE,
         num_way=n,
         num_support=k,
@@ -46,7 +46,7 @@ def zero_shot_text_label(
 ) -> float:
     dl = data.get_dataloader(
         dataset_name=dataset_name,
-        split="validation",
+        split="val",
         batch_size=BATCH_SIZE,
         num_way=n,
         num_support=1,

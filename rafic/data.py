@@ -251,7 +251,7 @@ class BirdsDataset(_Dataset):
                 "train"
                 if idx < int(len(classes) * self._FRACTION_TRAIN)
                 else (
-                    "validation"
+                    "val"
                     if idx
                     < int(len(classes) * (self._FRACTION_TRAIN + self._FRACTION_VAL))
                     else "test"
