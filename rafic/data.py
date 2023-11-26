@@ -254,7 +254,7 @@ class BirdsDataset(_Dataset):
         }
         for img in open(f"{self._path_base}/images.txt").readlines():
             img = img.strip()
-            cls = img.split("/")[0].split(".")[0]
+            cls = img.split("/")[0].split(".")[1]
             metadata[c2s[cls]][cls].append(img)
         return metadata
 
