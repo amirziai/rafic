@@ -4,8 +4,7 @@ import typing as t
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from . import config
-from .data import get_birds_dataloader
+from . import config, data
 from .evaluation import Evaluation
 
 
@@ -18,9 +17,12 @@ NUM_TASKS_PER_EPOCH = 200
 NUM_WORKERS = 8
 
 
-def _get_val_dataloader(k, a, n: int = N, q: int = Q, seed: int = config.SEED) -> float:
-    return get_birds_dataloader(
-        split="val",
+def _get_val_dataloader(
+    dataset_name: str, k, a, n: int = N, q: int = Q, seed: int = config.SEED
+) -> float:
+    return data.get_dataloader(
+        dataset_name=dataset_name,
+        split="validation",
         batch_size=BATCH_SIZE,
         num_way=n,
         num_support=k,
@@ -32,17 +34,19 @@ def _get_val_dataloader(k, a, n: int = N, q: int = Q, seed: int = config.SEED) -
     )
 
 
-def random(n: int = N, q: int = Q, seed: int = config.SEED) -> float:
-    dl = _get_val_dataloader(k=1, a=0, n=n, q=q, seed=seed)
+def random(dataset_name: str, n: int = N, q: int = Q, seed: int = config.SEED) -> float:
+    dl = _get_val_dataloader(dataset_name=dataset_name, k=1, a=0, n=n, q=q, seed=seed)
     return Evaluation.eval_random(dl=dl, seed=seed)
 
 
 def zero_shot_text_label(
+    dataset_name: str,
     n: int = N,
     q: int = Q,
 ) -> float:
-    dl = get_birds_dataloader(
-        split="val",
+    dl = data.get_dataloader(
+        dataset_name=dataset_name,
+        split="validation",
         batch_size=BATCH_SIZE,
         num_way=n,
         num_support=1,
@@ -51,12 +55,13 @@ def zero_shot_text_label(
         num_workers=NUM_WORKERS,
         seed=config.SEED,
         num_aug=0,
-        keep_original_label_idx=True,
+        use_global_labels=True,
     )
     return Evaluation.eval_text_encoder(dl)
 
 
 def non_parametric_image_embeddings(
+    dataset_name: str,
     k_vals: t.Sequence[int] = K_VALS,
     a_vals: t.Sequence[int] = A_VALS,
     n: int = N,
@@ -66,6 +71,7 @@ def non_parametric_image_embeddings(
         Evaluation.eval_non_parametric_nn,
     )
     return _run(
+        dataset_name=dataset_name,
         k_vals=k_vals,
         a_vals=a_vals,
         acc_fn=acc_fn,
@@ -75,6 +81,7 @@ def non_parametric_image_embeddings(
 
 
 def logistic_regression(
+    dataset_name: str,
     k_vals: t.Sequence[int] = K_VALS,
     a_vals: t.Sequence[int] = A_VALS,
     seed: int = config.SEED,
@@ -86,6 +93,7 @@ def logistic_regression(
         seed=seed,
     )
     return _run(
+        dataset_name=dataset_name,
         k_vals=k_vals,
         a_vals=a_vals,
         acc_fn=acc_fn,
@@ -95,6 +103,7 @@ def logistic_regression(
 
 
 def _run(
+    dataset_name: str,
     k_vals: t.Sequence[int],
     a_vals: t.Sequence[int],
     acc_fn: t.Callable,
@@ -107,6 +116,7 @@ def _run(
             num_aug=a,
             acc=acc_fn(
                 dl=_get_val_dataloader(
+                    dataset_name=dataset_name,
                     k=k,
                     a=a,
                     n=n,
