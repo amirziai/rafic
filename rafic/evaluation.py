@@ -89,22 +89,18 @@ class Evaluation:
     def _nn(data):
         x_tr, y_tr, x_ts, y_ts = data
         uniq = sorted(np.unique(y_tr))
-        lookup = {cls: idx for idx, cls in enumerate(uniq)}
-        lookup_rev = list(lookup.keys())
-        labels = torch.tensor([lookup[a.item()] for a in y_tr])
         centroids = np.vstack(
-            [x_tr[labels == i].mean(axis=0).numpy() for i in range(len(uniq))]
+            [x_tr[y_tr == i].mean(axis=0).cpu().numpy() for i in range(len(uniq))]
         )
-        ps = cosine_similarity(x_ts.numpy(), centroids).argmax(axis=0)
-        correct = np.sum([y.item() == lookup_rev[p] for y, p in zip(y_ts, ps)])
+        ps = cosine_similarity(x_ts.cpu().numpy(), centroids).argmax(axis=1)
+        correct = np.sum([y.item() == p for y, p in zip(y_ts, ps)])
         return correct, len(ps)
 
     @staticmethod
     def _rand(data):
         _, _, _, y_ts = data
         uniq = np.unique(y_ts)
-        # this approach doesn't know that we have exactly Q
-        # labels from each class, so it's probably working worse
+        # this approach doesn't know that we have exactly Q labels from each class
         ps = np.random.choice(uniq, len(y_ts), replace=True)
         correct = np.sum(y_ts.numpy() == ps)
         return correct, len(ps)
@@ -142,7 +138,7 @@ class Evaluation:
                 embs_text = np.vstack(
                     [ds.get_class_text_emb(class_global_idx=y) for y in ys]
                 )
-                ps = cosine_similarity(x_ts.numpy(), embs_text).argmax(axis=1)
+                ps = cosine_similarity(x_ts.cpu().numpy(), embs_text).argmax(axis=1)
                 correct += sum(y2i[y.item()] == p for y, p in zip(y_ts, ps))
 
         return correct / tot
