@@ -7,8 +7,6 @@ from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 from sklearn.metrics.pairwise import cosine_similarity
 from tqdm.auto import tqdm
 
-from . import data, search
-
 
 class Evaluation:
     @staticmethod
@@ -128,8 +126,8 @@ class Evaluation:
 
     @staticmethod
     def eval_text_encoder(dl):
-        cs = search.CLIPSearch()
-
+        assert dl.dataset.use_global_labels
+        ds = dl.dataset
         correct = 0
         tot = 0
 
@@ -142,7 +140,7 @@ class Evaluation:
                 ys = sorted(ys)
                 y2i = {y: i for i, y in enumerate(ys)}
                 embs_text = np.vstack(
-                    [cs.get_text_emb(f"a photo of a {i2l[y]} bird") for y in ys]
+                    [ds.get_class_text_emb(class_global_idx=y) for y in ys]
                 )
                 ps = cosine_similarity(x_ts.numpy(), embs_text).argmax(axis=1)
                 correct += sum(y2i[y.item()] == p for y, p in zip(y_ts, ps))
