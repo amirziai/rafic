@@ -254,8 +254,9 @@ class BirdsDataset(_Dataset):
         }
         for img in open(f"{self._path_base}/images.txt").readlines():
             img = img.strip()
-            cls = img.split(" ")[1].replace(".jpg", "")
-            metadata[c2s[cls]][cls].append(img)
+            cls = img.split("/")[0].split(".")[1]
+            key = img.replace(".jpg", "")
+            metadata[c2s[cls]][cls].append(key)
         return metadata
 
     def _get_embedding_path(self, key: str) -> str:
