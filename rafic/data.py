@@ -89,7 +89,7 @@ class _Dataset(dataset.Dataset):
         num_aug: int = 0,
         seed: int = None,
         search_index_big: bool = True,
-        faiss_index_path: str = None,
+        faiss_index_path: str = config.PATH_FAISS_INDEX,
         keep_original_label_idx: bool = False,
     ):
         super().__init__()
