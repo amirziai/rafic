@@ -2,12 +2,11 @@
 import collections
 import functools
 import json
-import os
-import glob
 import pickle
 import typing as t
 
 import numpy as np
+import pandas as pd
 import torch
 from torch.utils.data import dataset, sampler, dataloader
 
@@ -124,6 +123,14 @@ class _Dataset(dataset.Dataset):
     def _get_metadata(self) -> dict:
         raise NotImplementedError
 
+    def get_text_query(self, class_global_idx: int) -> str:
+        class_key = self._get_class_key(class_global_idx=class_global_idx)
+        s = class_key.strip().replace(".", " ").replace("_", " ").replace("-", " ")
+        return f"photo of a {s}"
+
+    def _get_class_key(self, class_global_idx: int) -> str:
+        return self._class_global_index_to_key[class_global_idx]
+
     def __getitem__(self, keys: t.List[Key]) -> DatasetGetItemOutput:
         images_support, images_query = [], []
         labels_support, labels_query = [], []
@@ -203,6 +210,16 @@ class AircraftDataset(_Dataset):
 
     def _get_embedding_path(self, key: str) -> str:
         return f"{self._path_base}/data/embeddings/{key:07d}.np"
+
+    @functools.lru_cache()
+    def _get_variant_to_mfg(self) -> dict:
+        df = pd.read_csv(f"{self._path_base}/metadata.csv")
+        return df.set_index("variant").manufacturer.to_dict()
+
+    def _get_class_key(self, class_global_idx: int) -> str:
+        variant = self._class_global_index_to_key[class_global_idx]
+        mfg = self._get_variant_to_mfg()[variant]
+        return f"{mfg} {variant}"
 
 
 class BirdsDataset(_Dataset):
