@@ -14,10 +14,17 @@ N = 10
 Q = 5
 BATCH_SIZE = 16
 NUM_WORKERS = 8
+AUG_COMBINE = True
 
 
 def _get_val_dataloader(
-    dataset_name: str, k, a, n: int = N, q: int = Q, seed: int = config.SEED
+    dataset_name: str,
+    k,
+    a,
+    n: int = N,
+    q: int = Q,
+    seed: int = config.SEED,
+    aug_combine: bool = AUG_COMBINE,
 ) -> float:
     return data.get_dataloader(
         dataset_name=dataset_name,
@@ -29,6 +36,7 @@ def _get_val_dataloader(
         num_workers=NUM_WORKERS,
         seed=seed,
         num_aug=a,
+        aug_combine=aug_combine,
     )
 
 
@@ -63,6 +71,7 @@ def non_parametric_image_embeddings(
     a_vals: t.Sequence[int] = A_VALS,
     n: int = N,
     q: int = Q,
+    aug_combine: bool = AUG_COMBINE,
 ) -> pd.DataFrame:
     acc_fn = functools.partial(
         Evaluation.eval_non_parametric_nn,
@@ -74,6 +83,7 @@ def non_parametric_image_embeddings(
         acc_fn=acc_fn,
         n=n,
         q=q,
+        aug_combine=aug_combine,
     )
 
 
@@ -84,6 +94,7 @@ def logistic_regression(
     seed: int = config.SEED,
     n: int = N,
     q: int = Q,
+    aug_combine: bool = AUG_COMBINE,
 ) -> pd.DataFrame:
     acc_fn = functools.partial(
         Evaluation.eval_clf,
@@ -96,6 +107,7 @@ def logistic_regression(
         acc_fn=acc_fn,
         n=n,
         q=q,
+        aug_combine=aug_combine,
     )
 
 
@@ -106,6 +118,7 @@ def _run(
     acc_fn: t.Callable,
     n: int = N,
     q: int = Q,
+    aug_combine: bool = AUG_COMBINE,
 ) -> pd.DataFrame:
     return pd.DataFrame(
         dict(
@@ -118,6 +131,7 @@ def _run(
                     a=a,
                     n=n,
                     q=q,
+                    aug_combine=aug_combine,
                 )
             ),
         )

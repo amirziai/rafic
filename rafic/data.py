@@ -93,12 +93,18 @@ class _Dataset(dataset.Dataset):
         search_index_big: bool = True,
         faiss_index_path: str = config.PATH_FAISS_INDEX,
         use_global_labels: bool = False,
+        aug_combine: bool = False,
+        aug_thr: t.Optional[float] = None,
     ):
         super().__init__()
         self._path_base = path_base
         self._num_support = num_support
         self._num_query = num_query
         self._num_aug = num_aug
+        self._aug_combine = aug_combine
+        if aug_thr is not None:
+            assert 0 < aug_thr < 1
+        self._aug_thr = aug_thr
         self._seed = seed
         self._search = search.CLIPSearch(
             path=config.PATH_SEARCH.replace(
@@ -168,7 +174,12 @@ class _Dataset(dataset.Dataset):
 
     @property
     def num_supp_aug(self) -> int:
-        return self._num_support + self._num_aug
+        if self._num_aug == 0:
+            return self._num_support
+        elif self._aug_combine:
+            return self._num_support + 1
+        else:
+            return self._num_support + self._num_aug
 
     @property
     @functools.lru_cache()
@@ -201,8 +212,10 @@ class _Dataset(dataset.Dataset):
         emb = torch.stack(embs_supp).mean(axis=0).numpy()
         keys = self._search.search_given_emb(emb=emb, n=self._num_aug)
         embs_aug = list(map(load_embedding_aug_by_key, keys))
-        comb = embs_supp + embs_aug
-        return comb
+        if not self._aug_combine:
+            return embs_supp + embs_aug
+        else:
+            return embs_supp + [np.vstack(embs_aug).mean(axis=0)]
 
 
 class AircraftDataset(_Dataset):
@@ -314,6 +327,8 @@ def get_dataloader(
     seed=None,
     faiss_index_path=config.PATH_FAISS_INDEX,
     use_global_labels: bool = False,
+    aug_combine: bool = False,
+    aug_thr: t.Optional[float] = None,
 ):
     """Returns a dataloader.DataLoader for Caltech-UCSD Birds-200-2011.
 
@@ -350,6 +365,8 @@ def get_dataloader(
         search_index_big=search_index_big,
         faiss_index_path=faiss_index_path,
         use_global_labels=use_global_labels,
+        aug_combine=aug_combine,
+        aug_thr=aug_thr,
     )
     choices = ds.get_class_keys_by_split(split=split)
 
