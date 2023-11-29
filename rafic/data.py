@@ -215,7 +215,7 @@ class _Dataset(dataset.Dataset):
         if not self._aug_combine:
             return embs_supp + embs_aug
         else:
-            return embs_supp + [np.vstack(embs_aug).mean(axis=0)]
+            return embs_supp + [torch.stack(embs_aug).mean(axis=0)]
 
 
 class AircraftDataset(_Dataset):
