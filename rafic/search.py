@@ -106,7 +106,7 @@ class CLIPSearch:
     @functools.lru_cache()
     def _clip_model(self):
         logger.info("Loading CLIP text encoder...")
-        model, _ = clip.load(config.CLIP_MODEL_TYPE, device=self._device)
+        model, _ = clip.load(config.CLIP_MODEL_TYPE, device=self._device, jit=True)
         logger.info("CLIP loaded!")
         return model
 

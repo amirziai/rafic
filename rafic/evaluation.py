@@ -93,6 +93,7 @@ class Evaluation:
             [x_tr[y_tr == i].mean(axis=0).cpu().numpy() for i in range(len(uniq))]
         )
         ps = cosine_similarity(x_ts.cpu().numpy(), centroids).argmax(axis=1)
+        assert len(y_ts) == len(ps)
         correct = np.sum([y.item() == p for y, p in zip(y_ts, ps)])
         return correct, len(ps)
 
@@ -139,6 +140,7 @@ class Evaluation:
                     [ds.get_class_text_emb(class_global_idx=y) for y in ys]
                 )
                 ps = cosine_similarity(x_ts.cpu().numpy(), embs_text).argmax(axis=1)
+                assert len(ps) == len(y_ts)
                 correct += sum(y2i[y.item()] == p for y, p in zip(y_ts, ps))
 
         return correct / tot
