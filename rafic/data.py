@@ -132,7 +132,7 @@ class _Dataset(dataset.Dataset):
 
     def get_class_text_emb(self, class_global_idx: int) -> np.ndarray:
         text = self.get_text_query(class_global_idx=class_global_idx)
-        return self._search.get_text_emb(text=text)
+        return self._search.get_text_emb(text=text).cpu().numpy()
 
     def _get_class_key(self, class_global_idx: int) -> str:
         return self._class_global_index_to_key[class_global_idx]
