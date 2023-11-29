@@ -100,7 +100,7 @@ class CLIPSearch:
             text = clip.tokenize(text).to(self._device)
             enc = self._clip_model.encode_text(text).squeeze()
         logger.info("Text encoded!")
-        return enc
+        return enc.cpu().numpy()
 
     @property
     @functools.lru_cache()
