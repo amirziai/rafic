@@ -67,7 +67,7 @@ class CLIPSearch:
         Nearest neighbor search given an input text.
         Will encode the text first and then run `search_given_emb`.
         """
-        emb_text = self.get_text_emb(text=text)
+        emb_text = self.get_text_emb(text=text).cpu().numpy()
         return self.search_given_emb(emb=emb_text, n=n)
 
     def show_images_by_key(self, keys: t.List[str]) -> None:
@@ -94,13 +94,13 @@ class CLIPSearch:
         return obj
 
     @functools.lru_cache()
-    def get_text_emb(self, text: str) -> np.ndarray:
+    def get_text_emb(self, text: str) -> torch.Tensor:
         logger.info(f"Encoding input text query: {text} ...")
         with torch.no_grad():
             text = clip.tokenize(text).to(self._device)
             enc = self._clip_model.encode_text(text).squeeze()
         logger.info("Text encoded!")
-        return enc.cpu().numpy()
+        return enc
 
     @property
     @functools.lru_cache()
