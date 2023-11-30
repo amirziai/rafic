@@ -33,6 +33,12 @@ class EuroSatConfig(BaseConfig):
     NUM_TEST_CLASSES = 2
     NUM_SAMPLES_PER_CLASS = 41
 
+class Food101Config(BaseConfig):
+    # Overall we have 10 classes
+    NUM_TRAIN_CLASSES = 50
+    NUM_VAL_CLASSES = 11
+    NUM_TEST_CLASSES = 40
+    NUM_SAMPLES_PER_CLASS = 41
 
 def get_rng(seed):
     return np.random.default_rng(seed) if seed is not None else np.random.default_rng()
@@ -248,7 +254,7 @@ class BirdsSampler(sampler.Sampler):
         return self._num_tasks
 
 class EuroSatDataset(dataset.Dataset):
-    """Caltech-UCSD Birds-200-2011 Dataset for meta-learning.
+    """EuroSAT_RGB Dataset for meta-learning.
 
     Each element of the dataset is a task. A task is specified with a key,
     which is a tuple of class indices (no particular order). The corresponding
@@ -288,8 +294,8 @@ class EuroSatDataset(dataset.Dataset):
         if not os.path.isdir(config.EURO_SAT_BASE_PATH):
             print(
                 "PLEASE DOWNLOAD THE BIRDS DATASET FROM"
-                " https://drive.google.com/file/d/190Q9nRXyfF1efyI5zLFjWcr-mZRd5WEV/view?usp=drive_link"
-                " AND PLACE IT IN data/birds"
+                " https://zenodo.org/records/7711810/files/EuroSAT_RGB.zip?download=1"
+                " AND PLACE IT IN data/EuroSAT_RGB"
             )
             raise FileNotFoundError
 
@@ -332,7 +338,6 @@ class EuroSatDataset(dataset.Dataset):
             labels_query (Tensor): task query labels
                 shape (num_way * num_query,)
         """
-        # breakpoint()
         images_support, images_query = [], []
         labels_support, labels_query = [], []
 
@@ -383,7 +388,7 @@ class EuroSatDataset(dataset.Dataset):
 
 
 class EuroSatSampler(sampler.Sampler):
-    """Samples task specification keys for an Caltech-UCSD Birds-200-2011 Dataset."""
+    """Samples task specification keys for an Euro-SAT Dataset."""
 
     def __init__(self, split_idxs, num_way, num_tasks, seed=None):
         """Inits BirdsSampler.
@@ -410,7 +415,168 @@ class EuroSatSampler(sampler.Sampler):
     def __len__(self):
         return self._num_tasks
 
+class Food101Dataset(dataset.Dataset):
+    """Food101 Dataset for meta-learning.
 
+    Each element of the dataset is a task. A task is specified with a key,
+    which is a tuple of class indices (no particular order). The corresponding
+    value is the instantiated task, which consists of sampled (image, label)
+    pairs.
+    """
+
+    def __init__(
+        self,
+        num_support,
+        num_query,
+        num_aug: int = 0,
+        seed=None,
+        search_index_big=True,
+        faiss_index_path=None,
+        keep_original_label_idx: bool = False,
+    ):
+        """Inits Food101 Dataset.
+
+        Args:
+            num_support (int): number of support examples per class
+            num_query (int): number of query examples per class
+        """
+        super().__init__()
+        self.dataset_config = Food101Config()
+        self._num_aug = num_aug
+        self._seed = seed
+        self._search = search.CLIPSearch(
+            path=config.PATH_SEARCH.replace(
+                "-1m", "-1m" if search_index_big else "-1k"
+            ),
+            faiss_index_path=faiss_index_path,
+        )
+        self._keep_original_label_idx = keep_original_label_idx
+
+        # download the data
+        if not os.path.isdir(config.FOOD_101_BASE_PATH):
+            print(
+                "PLEASE DOWNLOAD THE Food101 dataset FROM"
+                " https://zenodo.org/records/7711810/files/EuroSAT_RGB.zip?download=1"
+                " AND PLACE IT IN data/EuroSAT_RGB"
+            )
+            raise FileNotFoundError(f"Folder doesn't exist: {config.FOOD_101_BASE_PATH}")
+
+        # get all birds species folders
+        self._birds_folders = sorted(
+            glob.glob(os.path.join(config.FOOD_101_BASE_PATH, "images/*"))
+        )
+        assert len(self._birds_folders) == (
+            self.dataset_config.NUM_TRAIN_CLASSES + self.dataset_config.NUM_VAL_CLASSES + self.dataset_config.NUM_TEST_CLASSES
+        ), f"Expected {self.dataset_config.NUM_TRAIN_CLASSES + self.dataset_config.NUM_VAL_CLASSES + self.dataset_config.NUM_TEST_CLASSES} classes, but found {len(self._birds_folders)} bird folders."
+
+        # shuffle birds classes
+        np.random.default_rng(config.SEED).shuffle(self._birds_folders)
+
+        # check problem arguments
+        assert num_support + num_query <= self.dataset_config.NUM_SAMPLES_PER_CLASS
+        self._num_support = num_support
+        self._num_query = num_query
+
+    @property
+    def num_supp_aug(self) -> int:
+        # breakpoint()
+        return self._num_support + self._num_aug
+
+    def __getitem__(self, class_idxs):
+        """Constructs a task.
+
+        Data for each class is sampled uniformly at random without replacement.
+
+        Args:
+            class_idxs (tuple[int]): class indices that comprise the task
+
+        Returns:
+            images_support (Tensor): task support images
+                shape (num_way * num_support, channels, height, width)
+            labels_support (Tensor): task support labels
+                shape (num_way * num_support,)
+            images_query (Tensor): task query images
+                shape (num_way * num_query, channels, height, width)
+            labels_query (Tensor): task query labels
+                shape (num_way * num_query,)
+        """
+        images_support, images_query = [], []
+        labels_support, labels_query = [], []
+
+        for idx, class_idx in enumerate(class_idxs):
+            # get a class's examples and sample from them
+            all_file_paths = sorted(
+                glob.glob(os.path.join(self._birds_folders[class_idx], "*.jpg"))
+            )
+            rng = get_rng(seed=self._seed)
+            sampled_file_paths = rng.choice(
+                all_file_paths, size=self._num_support + self._num_query, replace=False
+            )
+            embs = [load_embedding(file_path) for file_path in sampled_file_paths]
+            label = (
+                int(self._birds_folders[class_idx].split("/")[-1].split(".")[0])
+                if self._keep_original_label_idx
+                else idx
+            )
+            # split sampled examples into support and query
+            embs_supp = embs[: self._num_support]
+            embs_supp_aug = self._augment(embs_supp)
+            images_support.extend(embs_supp_aug)
+            images_query.extend(embs[self._num_support :])
+            labels_support.extend([label] * self.num_supp_aug)
+            labels_query.extend([label] * self._num_query)
+
+        # aggregate into tensors
+        # images_support = [torch.from_numpy(x) if isinstance(x, np.ndarray) else x for x in images_support]
+        images_support = torch.stack(
+            images_support
+        ).float()  # shape (N*S, D) where D is the size of CLIP embeddings (e.g. 768)
+        labels_support = torch.tensor(labels_support)  # shape (N*S)
+        images_query = torch.stack(images_query).float()
+        labels_query = torch.tensor(labels_query)
+
+        return images_support, labels_support, images_query, labels_query
+
+    def _augment(self, embs_supp):
+        # breakpoint()
+        if self._num_aug == 0:
+            return embs_supp
+        emb = torch.stack(embs_supp).mean(axis=0).numpy()
+        keys = self._search.search_given_emb(emb=emb, n=self._num_aug)
+        embs_aug = list(map(load_embedding_aug_by_key, keys))
+        # embs_aug = [torch.from_numpy(x) if isinstance(x, np.ndarray) else x for x in embs_aug]
+        comb = embs_supp + embs_aug
+        return comb
+
+
+class Food101Sampler(sampler.Sampler):
+    """Samples task specification keys for an Euro-SAT Dataset."""
+
+    def __init__(self, split_idxs, num_way, num_tasks, seed=None):
+        """Inits BirdsSampler.
+
+        Args:
+            split_idxs (range): indices that comprise the
+                training/validation/test split
+            num_way (int): number of classes per task
+            num_tasks (int): number of tasks to sample
+        """
+        super().__init__(None)
+        self._split_idxs = split_idxs
+        self._num_way = num_way
+        self._num_tasks = num_tasks
+        self._seed = seed
+
+    def __iter__(self):
+        rng = get_rng(seed=self._seed)
+        return (
+            rng.choice(self._split_idxs, size=self._num_way, replace=False)
+            for _ in range(self._num_tasks)
+        )
+
+    def __len__(self):
+        return self._num_tasks
+    
 def get_birds_dataloader(
     split,
     batch_size,
@@ -449,6 +615,10 @@ def get_birds_dataloader(
         dataset_config = BirdDatasetConfig() 
     elif data_set == "euro_sat":
         dataset_config = EuroSatConfig()
+    elif data_set == "food101":
+        dataset_config = Food101Config()
+    else:
+        raise ValueError(f"dataset is not supported. Requested dataset is: {data_set}.")
 
     if split == "train":
         split_idxs = range(dataset_config.NUM_TRAIN_CLASSES)
@@ -469,6 +639,19 @@ def get_birds_dataloader(
         num_tasks_per_epoch,
         seed=seed if deterministic else None,
     )
+    euro_sat_sampler_obj = EuroSatSampler(
+        split_idxs,
+        num_way,
+        num_tasks_per_epoch,
+        seed=seed if deterministic else None,
+    )
+    food_101_sampler_obj = Food101Sampler(
+        split_idxs,
+        num_way,
+        num_tasks_per_epoch,
+        seed=seed if deterministic else None,
+    )
+    
     if data_set == "birds":
         return dataloader.DataLoader(
             dataset=BirdsDataset(
@@ -499,12 +682,32 @@ def get_birds_dataloader(
                 keep_original_label_idx=keep_original_label_idx,
             ),
             batch_size=batch_size,
-            sampler=sampler_obj,
+            sampler=euro_sat_sampler_obj,
             num_workers=num_workers,
             collate_fn=lambda x: x,
             pin_memory=torch.cuda.is_available(),
             drop_last=True,
         )
+    elif data_set == "food101":
+        return dataloader.DataLoader(
+            dataset=Food101Dataset(
+                num_support=num_support,
+                num_query=num_query,
+                seed=seed if deterministic else None,
+                num_aug=num_aug,
+                search_index_big=search_index_big,
+                faiss_index_path=faiss_index_path,
+                keep_original_label_idx=keep_original_label_idx,
+            ),
+            batch_size=batch_size,
+            sampler=food_101_sampler_obj,
+            num_workers=num_workers,
+            collate_fn=lambda x: x,
+            pin_memory=torch.cuda.is_available(),
+            drop_last=True,
+        )
+    else:
+        raise ValueError(f"dataset is not supported. Requested dataset is: {data_set}.")
 
 
 def get_class_index_to_label() -> t.Dict[int, str]:
