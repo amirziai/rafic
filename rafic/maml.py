@@ -34,8 +34,12 @@ class MAML:
         self,
         num_outputs,
         num_inner_steps,
+        num_support,
         inner_lr,
         learn_inner_lrs,
+        aug_lr,
+        inner_lr_aug,
+        learn_inner_lrs_aug,
         outer_lr,
         log_dir,
         device,
@@ -117,16 +121,32 @@ class MAML:
             k: torch.tensor(inner_lr, requires_grad=learn_inner_lrs)
             for k in self._meta_parameters.keys()
         }
+        self._inner_lrs_aug = {
+            k: torch.tensor(inner_lr_aug, requires_grad=learn_inner_lrs_aug)
+            for k in self._meta_parameters.keys()
+        }
         self._outer_lr = outer_lr
 
-        self._optimizer = torch.optim.Adam(
-            list(self._meta_parameters.values()) + list(self._inner_lrs.values()),
-            lr=self._outer_lr,
-        )
+        if aug_lr:
+            self._optimizer = torch.optim.Adam(
+                list(self._meta_parameters.values()) +
+                list(self._inner_lrs.values()) +
+                list(self._inner_lrs_aug.values()),
+                lr=self._outer_lr
+            )
+        else:
+            self._optimizer = torch.optim.Adam(
+                list(self._meta_parameters.values()) +
+                list(self._inner_lrs.values()),
+                lr=self._outer_lr
+            )
+
         self._log_dir = log_dir
         os.makedirs(self._log_dir, exist_ok=True)
 
         self._start_train_step = 0
+        self._num_support = num_support
+        self._aug_lr = aug_lr
 
     def _forward(self, images, parameters):
         """Computes predicted classification logits.
@@ -190,13 +210,22 @@ class MAML:
                 accuracies.append(accuracy)
 
             if step < self._num_inner_steps:
-                # computes the gradients based on support tasks - skip if it is test
-                gradients = torch.autograd.grad(
-                    loss, parameters.values(), create_graph=train
-                )
-                # update the model's parameter by the support tasks
-                for (name, param), grad in zip(parameters.items(), gradients):
-                    parameters[name] = param - self._inner_lrs[name] * grad
+                if not self._aug_lr:
+                    # computes the gradients based on support tasks - skip if it is test
+                    gradients = torch.autograd.grad(loss, parameters.values(), create_graph=train)
+                    # update the model's parameter by the support tasks
+                    for (name, param), grad in zip(parameters.items(), gradients):
+                        parameters[name] = param - self._inner_lrs[name] * grad
+                else:
+                    ## code for separate loss - support and augment
+                    logits_support = self._forward(images[:self._num_support], parameters) # computes the logits
+                    loss_support = F.cross_entropy(logits_support, labels[:self._num_support])
+                    logits_aug= self._forward(images[self._num_support:], parameters) # computes the logits
+                    loss_aug = F.cross_entropy(logits_aug, labels[self._num_support:])
+                    gradients_support = torch.autograd.grad(loss_support, parameters.values(), create_graph=train)
+                    gradients_aug = torch.autograd.grad(loss_aug, parameters.values(), create_graph=train)
+                    for (name, param), grad_support, grad_aug in zip(parameters.items(), gradients_support, gradients_aug):
+                        parameters[name] = param - self._inner_lrs[name] * grad_support - self._inner_lrs_aug[name] * grad_aug
                 logits = self._forward(images, parameters)
                 accuracy = util.score(logits, labels)
                 accuracies.append(accuracy)
@@ -428,15 +457,19 @@ def main(args):
 
     log_dir = args.log_dir
     if log_dir is None:
-        log_dir = f"./logs/maml/birds.way_{args.num_way}.support_{args.num_support}.query_{args.num_query}.aug_{args.num_aug}.inner_steps_{args.num_inner_steps}.inner_lr_{args.inner_lr}.learn_inner_lrs_{args.learn_inner_lrs}.outer_lr_{args.outer_lr}.batch_size_{args.batch_size}"  # pylint: disable=line-too-long
+        log_dir = f"../../logs/maml/birds.way_{args.num_way}.support_{args.num_support}.query_{args.num_query}.aug_{args.num_aug}.inner_steps_{args.num_inner_steps}.inner_lr_{args.inner_lr}.learn_inner_lrs_{args.learn_inner_lrs}.outer_lr_{args.outer_lr}.batch_size_{args.batch_size}.aug_lr_{args.aug_lr}.inner_lr_aug_{args.inner_lr_aug}.learn_inner_lrs_aug_{args.learn_inner_lrs_aug}"  # pylint: disable=line-too-long
     print(f"log_dir: {log_dir}")
     writer = tensorboard.SummaryWriter(log_dir=log_dir)
 
     maml = MAML(
         args.num_way,
         args.num_inner_steps,
+        args.num_support,
         args.inner_lr,
         args.learn_inner_lrs,
+        args.aug_lr,
+        args.inner_lr_aug,
+        args.learn_inner_lrs_aug,
         args.outer_lr,
         log_dir,
         DEVICE,
@@ -457,27 +490,29 @@ def main(args):
             f"num_support={args.num_support}, "
             f"num_query={args.num_query}"
         )
-        dataloader_meta_train = birds_data.get_birds_dataloader(
-            split="train",
-            batch_size=args.batch_size,
-            num_way=args.num_way,
-            num_support=args.num_support,
-            num_query=args.num_query,
-            num_tasks_per_epoch=num_training_tasks,
-            num_workers=args.num_workers,
-            num_aug=args.num_aug,
-            # raw_image_features = args.raw_image_features,
-        )
-        dataloader_meta_val = birds_data.get_birds_dataloader(
+        dataloader_meta_train = data.get_dataloader(
+            dataset_name=args.dataset_name,
             split="val",
             batch_size=args.batch_size,
             num_way=args.num_way,
             num_support=args.num_support,
             num_query=args.num_query,
-            num_tasks_per_epoch=200,  # was batch_size * 4
             num_workers=args.num_workers,
+            seed=0,
             num_aug=args.num_aug,
-            # raw_image_features = args.raw_image_features,
+            aug_combine=False,
+        )
+        dataloader_meta_val = data.get_dataloader(
+            dataset_name=args.dataset_name,
+            split="val",
+            batch_size=args.batch_size,
+            num_way=args.num_way,
+            num_support=args.num_support,
+            num_query=args.num_query,
+            num_workers=args.num_workers,
+            seed=0,
+            num_aug=args.num_aug,
+            aug_combine=False,
         )
         maml.train(dataloader_meta_train, dataloader_meta_val, writer)
     else:
@@ -487,16 +522,17 @@ def main(args):
             f"num_support={args.num_support}, "
             f"num_query={args.num_query}"
         )
-        dataloader_test = birds_data.get_birds_dataloader(
+        dataloader_test = data.get_dataloader(
+            dataset_name=args.dataset_name,
             split="test",
-            batch_size=1,
+            batch_size=args.batch_size,
             num_way=args.num_way,
             num_support=args.num_support,
             num_query=args.num_query,
-            num_tasks_per_epoch=200,  # was NUM_TEST_TASKS
             num_workers=args.num_workers,
+            seed=0,
             num_aug=args.num_aug,
-            # raw_image_features = args.raw_image_features,
+            aug_combine=False,
         )
         maml.test(dataloader_test)
 
@@ -575,6 +611,12 @@ if __name__ == "__main__":
         help=("whether to use the raw image features or the CLIP emgeddings"),
     )
     parser.add_argument("--num_aug", type=int, default=0, help="Number of retrievals")
+    parser.add_argument("--dataset_name", type=str, default="bird", help="dataset name")
+    parser.add_argument('--aug_lr', action='store_true')
+    parser.add_argument('--inner_lr_aug', type=float, default=0.2,
+                        help='inner-loop learning rate initialization for augmented data')
+    parser.add_argument('--learn_inner_lrs_aug', default=False, action='store_true',
+                        help='whether to optimize inner-loop learning rates')
 
     args = parser.parse_args()
 
