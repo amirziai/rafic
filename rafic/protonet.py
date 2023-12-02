@@ -352,6 +352,7 @@ def main(args):
             num_aug=args.num_aug,
             aug_combine=args.aug_combine,
             aug_thr=args.aug_thr,
+            seed=0,
         )
         protonet.train(dataloader_meta_train, dataloader_meta_val, writer)
     else:
@@ -372,6 +373,7 @@ def main(args):
             num_aug=args.num_aug,
             aug_combine=args.aug_combine,
             aug_thr=args.aug_thr,
+            seed=0,
         )
         protonet.test(dataloader_test)
 
