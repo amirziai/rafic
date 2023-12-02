@@ -209,14 +209,13 @@ class _Dataset(dataset.Dataset):
     def _augment(self, embs_supp):
         if self._num_aug == 0:
             return embs_supp
-        # emb = torch.stack(embs_supp).mean(axis=0).numpy()
-        emb = embs_supp[0].numpy()
+        emb = torch.stack(embs_supp).mean(axis=0).numpy()
         res = self._search.search_given_emb(emb=emb, n=self._num_aug)
         _rem = []
         if self._aug_thr is not None:
             # what to use for imputation
-            # _impute_with = torch.tensor(emb)
-            _impute_with = embs_supp[0]
+            _impute_with = torch.tensor(emb)
+            # _impute_with = embs_supp[0]
             res = [x for x in res if x.score >= self._aug_thr]
             if len(res) == 0:
                 _aug = [_impute_with] * (1 if self._aug_combine else self._num_aug)
@@ -224,8 +223,7 @@ class _Dataset(dataset.Dataset):
             if len(res) != self._num_aug:
                 # if going to combine => no action needed
                 if not self._aug_combine:
-                    # if going to preserve individual embs
-                    # => impute the missing ones
+                    # if going to preserve individual embs => impute the missing ones
                     _rem = [_impute_with] * (self._num_aug - len(res))
 
         keys = [x.key for x in res]
