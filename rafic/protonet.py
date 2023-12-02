@@ -340,6 +340,7 @@ def main(args):
             num_aug=args.num_aug,
             aug_combine=args.aug_combine,
             aug_thr=args.aug_thr,
+            seed=args.seed,
         )
         dataloader_meta_val = data.get_dataloader(
             dataset_name=args.dataset_name,
