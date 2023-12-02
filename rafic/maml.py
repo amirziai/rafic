@@ -11,7 +11,7 @@ import torch.multiprocessing
 import torch.nn.functional as F
 from torch.utils import tensorboard
 
-from . import data, util
+from . import data, experiments, util
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
@@ -129,16 +129,15 @@ class MAML:
 
         if aug_lr:
             self._optimizer = torch.optim.Adam(
-                list(self._meta_parameters.values()) +
-                list(self._inner_lrs.values()) +
-                list(self._inner_lrs_aug.values()),
-                lr=self._outer_lr
+                list(self._meta_parameters.values())
+                + list(self._inner_lrs.values())
+                + list(self._inner_lrs_aug.values()),
+                lr=self._outer_lr,
             )
         else:
             self._optimizer = torch.optim.Adam(
-                list(self._meta_parameters.values()) +
-                list(self._inner_lrs.values()),
-                lr=self._outer_lr
+                list(self._meta_parameters.values()) + list(self._inner_lrs.values()),
+                lr=self._outer_lr,
             )
 
         self._log_dir = log_dir
@@ -212,20 +211,38 @@ class MAML:
             if step < self._num_inner_steps:
                 if not self._aug_lr:
                     # computes the gradients based on support tasks - skip if it is test
-                    gradients = torch.autograd.grad(loss, parameters.values(), create_graph=train)
+                    gradients = torch.autograd.grad(
+                        loss, parameters.values(), create_graph=train
+                    )
                     # update the model's parameter by the support tasks
                     for (name, param), grad in zip(parameters.items(), gradients):
                         parameters[name] = param - self._inner_lrs[name] * grad
                 else:
                     ## code for separate loss - support and augment
-                    logits_support = self._forward(images[:self._num_support], parameters) # computes the logits
-                    loss_support = F.cross_entropy(logits_support, labels[:self._num_support])
-                    logits_aug= self._forward(images[self._num_support:], parameters) # computes the logits
-                    loss_aug = F.cross_entropy(logits_aug, labels[self._num_support:])
-                    gradients_support = torch.autograd.grad(loss_support, parameters.values(), create_graph=train)
-                    gradients_aug = torch.autograd.grad(loss_aug, parameters.values(), create_graph=train)
-                    for (name, param), grad_support, grad_aug in zip(parameters.items(), gradients_support, gradients_aug):
-                        parameters[name] = param - self._inner_lrs[name] * grad_support - self._inner_lrs_aug[name] * grad_aug
+                    logits_support = self._forward(
+                        images[: self._num_support], parameters
+                    )  # computes the logits
+                    loss_support = F.cross_entropy(
+                        logits_support, labels[: self._num_support]
+                    )
+                    logits_aug = self._forward(
+                        images[self._num_support :], parameters
+                    )  # computes the logits
+                    loss_aug = F.cross_entropy(logits_aug, labels[self._num_support :])
+                    gradients_support = torch.autograd.grad(
+                        loss_support, parameters.values(), create_graph=train
+                    )
+                    gradients_aug = torch.autograd.grad(
+                        loss_aug, parameters.values(), create_graph=train
+                    )
+                    for (name, param), grad_support, grad_aug in zip(
+                        parameters.items(), gradients_support, gradients_aug
+                    ):
+                        parameters[name] = (
+                            param
+                            - self._inner_lrs[name] * grad_support
+                            - self._inner_lrs_aug[name] * grad_aug
+                        )
                 logits = self._forward(images, parameters)
                 accuracy = util.score(logits, labels)
                 accuracies.append(accuracy)
@@ -384,6 +401,9 @@ class MAML:
         Args:
             dataloader_test (DataLoader): loader for test tasks
         """
+        raise NotImplementedError(
+            "TODO: NUM_TEST_TASKS must be a function of the dataset"
+        )
         accuracies = []
         for task_batch in dataloader_test:
             _, _, accuracy_query = self._outer_step(task_batch, train=False)
@@ -543,7 +563,7 @@ if __name__ == "__main__":
         "--log_dir", type=str, default=None, help="directory to save to or load from"
     )
     parser.add_argument(
-        "--num_way", type=int, default=5, help="number of classes in a task"
+        "--num_way", type=int, default=experiments.N, help="number of classes in a task"
     )
     parser.add_argument(
         "--num_support",
@@ -554,7 +574,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num_query",
         type=int,
-        default=15,
+        default=experiments.Q,
         help="number of query examples per class in a task",
     )
     parser.add_argument(
@@ -578,7 +598,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=16,
+        default=experiments.BATCH_SIZE,
         help="number of tasks per outer-loop update",
     )
     parser.add_argument(
@@ -611,12 +631,22 @@ if __name__ == "__main__":
         help=("whether to use the raw image features or the CLIP emgeddings"),
     )
     parser.add_argument("--num_aug", type=int, default=0, help="Number of retrievals")
-    parser.add_argument("--dataset_name", type=str, default="bird", help="dataset name")
-    parser.add_argument('--aug_lr', action='store_true')
-    parser.add_argument('--inner_lr_aug', type=float, default=0.2,
-                        help='inner-loop learning rate initialization for augmented data')
-    parser.add_argument('--learn_inner_lrs_aug', default=False, action='store_true',
-                        help='whether to optimize inner-loop learning rates')
+    parser.add_argument(
+        "--dataset_name", type=str, default="birds", help="dataset name"
+    )
+    parser.add_argument("--aug_lr", action="store_true")
+    parser.add_argument(
+        "--inner_lr_aug",
+        type=float,
+        default=0.2,
+        help="inner-loop learning rate initialization for augmented data",
+    )
+    parser.add_argument(
+        "--learn_inner_lrs_aug",
+        default=False,
+        action="store_true",
+        help="whether to optimize inner-loop learning rates",
+    )
 
     args = parser.parse_args()
 

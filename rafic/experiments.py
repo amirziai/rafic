@@ -14,7 +14,7 @@ N = 10
 Q = 5
 BATCH_SIZE = 16
 NUM_WORKERS = 8
-AUG_COMBINE = True
+AUG_COMBINE = False
 
 
 def _get_val_dataloader(

@@ -1,6 +1,5 @@
 """Implementation of prototypical networks for Omniglot."""
-# import sys
-# sys.path.append('..')
+
 import argparse
 import os
 
@@ -15,7 +14,7 @@ from torch import nn
 import torch.nn.functional as F  # pylint: disable=unused-import
 from torch.utils import tensorboard
 
-from . import data
+from . import data, experiments
 from .evaluation import Evaluation  # pylint: disable=unused-import
 
 NUM_INPUT_CHANNELS = 1
@@ -236,6 +235,9 @@ class ProtoNet:
         Args:
             dataloader_test (DataLoader): loader for test tasks
         """
+        raise NotImplementedError(
+            "TODO: NUM_TEST_TASKS must be a function of the dataset"
+        )
         accuracies = []
         for i, task_batch in enumerate(dataloader_test):
             accuracies.append(self._step(task_batch)[2])
@@ -327,23 +329,23 @@ def main(args):
             f"num_support={args.num_support}, "
             f"num_query={args.num_query}"
         )
-        dataloader_meta_train = birds_data.get_birds_dataloader(
+        dataloader_meta_train = data.get_dataloader(
+            dataset_name=args.dataset_name,
             split="train",
             batch_size=args.batch_size,
             num_way=args.num_way,
             num_support=args.num_support,
             num_query=args.num_query,
-            num_tasks_per_epoch=num_training_tasks,
             num_workers=args.num_workers,
             num_aug=args.num_aug,
         )
-        dataloader_meta_val = birds_data.get_birds_dataloader(
+        dataloader_meta_val = data.get_dataloader(
+            dataset_name=args.dataset_name,
             split="val",
             batch_size=args.batch_size,
             num_way=args.num_way,
             num_support=args.num_support,
             num_query=args.num_query,
-            num_tasks_per_epoch=200,  # was batch_size * 4
             num_workers=args.num_workers,
             num_aug=args.num_aug,
         )
@@ -355,13 +357,13 @@ def main(args):
             f"num_support={args.num_support}, "
             f"num_query={args.num_query}"
         )
-        dataloader_test = birds_data.get_birds_dataloader(
+        dataloader_test = data.get_dataloader(
+            dataset_name=args.dataset_name,
             split="test",
             batch_size=1,
             num_way=args.num_way,
             num_support=args.num_support,
             num_query=args.num_query,
-            num_tasks_per_epoch=200,  # was NUM_TEST_TASKS
             num_workers=args.num_workers,
             num_aug=args.num_aug,
         )
@@ -374,7 +376,7 @@ if __name__ == "__main__":
         "--log_dir", type=str, default=None, help="directory to save to or load from"
     )
     parser.add_argument(
-        "--num_way", type=int, default=5, help="number of classes in a task"
+        "--num_way", type=int, default=experiments.N, help="number of classes in a task"
     )
     parser.add_argument(
         "--num_support",
@@ -385,7 +387,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num_query",
         type=int,
-        default=15,
+        default=experiments.Q,
         help="number of query examples per class in a task",
     )
     parser.add_argument("--num_aug", type=int, default=0, help="Number of retrievals")
@@ -398,7 +400,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=16,
+        default=experiments.BATCH_SIZE,
         help="number of tasks per outer-loop update",
     )
     parser.add_argument(
@@ -420,7 +422,7 @@ if __name__ == "__main__":
         ),
     )
     parser.add_argument(
-        "--num_workers", type=int, default=2, help=("needed to specify the dataloader")
+        "--num_workers", type=int, default=experiments.NUM_WORKERS, help=("needed to specify the dataloader")
     )
     parser.add_argument("--compile", action="store_true", default=False)
     parser.add_argument(
@@ -431,18 +433,6 @@ if __name__ == "__main__":
     )
     parser.add_argument("--cache", action="store_true")
     parser.add_argument("--device", type=str, default="cpu")
-
+    parser.add_argument("--dataset_name", type=str, default="birds")
     args = parser.parse_args()
-
-    # if args.cache == True:
-    #     # Download Omniglot Dataset
-    #     if not os.path.isdir("./omniglot_resized"):
-    #         gdd.download_file_from_google_drive(
-    #             file_id="1iaSFXIYC3AB8q9K_M-oVMa4pmB7yKMtI",
-    #             dest_path="./omniglot_resized.zip",
-    #             unzip=True,
-    #         )
-    #     assert os.path.isdir("./omniglot_resized")
-    # else:
-
     main(args)
