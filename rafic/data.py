@@ -209,7 +209,8 @@ class _Dataset(dataset.Dataset):
     def _augment(self, embs_supp):
         if self._num_aug == 0:
             return embs_supp
-        emb = torch.stack(embs_supp).mean(axis=0).numpy()
+        # emb = torch.stack(embs_supp).mean(axis=0).numpy()
+        emb = embs_supp[0].numpy()
         res = self._search.search_given_emb(emb=emb, n=self._num_aug)
         _rem = []
         if self._aug_thr is not None:
