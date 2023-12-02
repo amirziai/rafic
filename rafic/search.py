@@ -26,6 +26,12 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
+class SearchResult:
+    key: str
+    score: float
+
+
+@dataclass(frozen=True)
 class CLIPSearch:
     """
     Path to the embeddings file.
@@ -36,7 +42,7 @@ class CLIPSearch:
     faiss_index_path: str = config.PATH_FAISS_INDEX
     image_path_base: str = config.PATH_IMAGES_LAION
 
-    def search_given_emb(self, emb: np.ndarray, n: int) -> t.List[str]:
+    def search_given_emb(self, emb: np.ndarray, n: int) -> t.List[SearchResult]:
         """
         Nearest neighbor search given an input embedding.
         Won't filter out the exact match (i.e. if the image is already in the index).
@@ -49,9 +55,16 @@ class CLIPSearch:
         assert emb_dim[0] == self._embs.shape[1], "emb must be the same dim as index"
         emb = np.expand_dims(emb, axis=0)
         emb = normalize(emb, axis=1)
-        _, idxs = self._faiss_index.search(emb, k=n)
+        scores, idxs = self._faiss_index.search(emb, k=n)
         idxs = idxs.squeeze() if n >= 2 else [idxs.item()]
-        return [self._idx_to_key_lookup[idx] for idx in idxs]
+        scores = scores.squeeze() if n >= 2 else [scores.item()]
+        return [
+            SearchResult(
+                key=self._idx_to_key_lookup[idx],
+                score=score,
+            )
+            for idx, score in zip(idxs, scores)
+        ]
 
     def search_given_embs(self, embs: np.ndarray, n: int) -> t.List[t.List[str]]:
         assert len(embs.shape) == 2, "must be 2 dimensional"
@@ -62,7 +75,7 @@ class CLIPSearch:
             for i in range(len(idxs))
         ]
 
-    def search_given_text(self, text: str, n: int) -> t.List[str]:
+    def search_given_text(self, text: str, n: int) -> t.List[SearchResult]:
         """
         Nearest neighbor search given an input text.
         Will encode the text first and then run `search_given_emb`.
@@ -74,7 +87,7 @@ class CLIPSearch:
         from IPython.display import Image as JImage, display
 
         for key in keys:
-            path = f"{self.image_path_base}/{key}.png"
+            path = f"{self.image_path_base}/{key}"
             display(JImage(path))
 
     @property

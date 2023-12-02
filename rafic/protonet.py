@@ -338,6 +338,8 @@ def main(args):
             num_query=args.num_query,
             num_workers=args.num_workers,
             num_aug=args.num_aug,
+            aug_combine=args.aug_combine,
+            aug_thr=args.aug_thr,
         )
         dataloader_meta_val = data.get_dataloader(
             dataset_name=args.dataset_name,
@@ -348,6 +350,8 @@ def main(args):
             num_query=args.num_query,
             num_workers=args.num_workers,
             num_aug=args.num_aug,
+            aug_combine=args.aug_combine,
+            aug_thr=args.aug_thr,
         )
         protonet.train(dataloader_meta_train, dataloader_meta_val, writer)
     else:
@@ -366,6 +370,8 @@ def main(args):
             num_query=args.num_query,
             num_workers=args.num_workers,
             num_aug=args.num_aug,
+            aug_combine=args.aug_combine,
+            aug_thr=args.aug_thr,
         )
         protonet.test(dataloader_test)
 
@@ -422,7 +428,10 @@ if __name__ == "__main__":
         ),
     )
     parser.add_argument(
-        "--num_workers", type=int, default=experiments.NUM_WORKERS, help=("needed to specify the dataloader")
+        "--num_workers",
+        type=int,
+        default=experiments.NUM_WORKERS,
+        help=("needed to specify the dataloader"),
     )
     parser.add_argument("--compile", action="store_true", default=False)
     parser.add_argument(
@@ -434,5 +443,7 @@ if __name__ == "__main__":
     parser.add_argument("--cache", action="store_true")
     parser.add_argument("--device", type=str, default="cpu")
     parser.add_argument("--dataset_name", type=str, default="birds")
+    parser.add_argument("--aug_thr", type=float, default=None)
+    parser.add_argument("--aug_combine", action="store_true")
     args = parser.parse_args()
     main(args)
