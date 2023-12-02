@@ -320,9 +320,9 @@ def main(args):
         print("Checkpoint loading skipped.")
 
     if not args.test:
-        num_training_tasks = args.batch_size * (
-            args.num_train_iterations - args.checkpoint_step - 1
-        )
+        # num_training_tasks = args.batch_size * (
+        #     args.num_train_iterations - args.checkpoint_step - 1
+        # )
         print(
             f"Training on tasks with composition "
             f"num_way={args.num_way}, "

@@ -360,6 +360,8 @@ def get_dataloader(
         seed (int): for reproducibility
         faiss_index_path (str): path to the faiss index
         use_global_labels (bool): if false, will re-index labels to [0, 1, ..., num_classes - 1]
+        aug_thr (float): if provided, will be used for filtering retrieved images.
+        aug_combine (bool): if true, will average all retrieved images into a single vector.
     """
     assert num_aug >= 0
 
@@ -371,11 +373,10 @@ def get_dataloader(
         raise ValueError(f"dataset {dataset_name} is not supported.")
 
     dataset_cls = dataset_options[dataset_name]
-    deterministic = split in {"val", "test"}
     ds = dataset_cls(
         num_support=num_support,
         num_query=num_query,
-        seed=seed if deterministic else None,
+        seed=seed,
         num_aug=num_aug,
         search_index_big=search_index_big,
         faiss_index_path=faiss_index_path,
@@ -389,7 +390,7 @@ def get_dataloader(
         choices=choices,
         num_way=num_way,
         num_tasks=len(choices),
-        seed=seed if deterministic else None,
+        seed=seed,
     )
     return dataloader.DataLoader(
         dataset=ds,
