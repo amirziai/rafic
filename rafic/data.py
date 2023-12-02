@@ -213,17 +213,19 @@ class _Dataset(dataset.Dataset):
         res = self._search.search_given_emb(emb=emb, n=self._num_aug)
         _rem = []
         if self._aug_thr is not None:
+            # what to use for imputation
+            # _impute_with = torch.tensor(emb)
+            _impute_with = embs_supp[0]
             res = [x for x in res if x.score >= self._aug_thr]
             if len(res) == 0:
-                # impute with `emb`
-                _aug = [torch.tensor(emb)] * (1 if self._aug_combine else self._num_aug)
+                _aug = [_impute_with] * (1 if self._aug_combine else self._num_aug)
                 return embs_supp + _aug
             if len(res) != self._num_aug:
                 # if going to combine => no action needed
                 if not self._aug_combine:
                     # if going to preserve individual embs
-                    # => impute the missing ones with `emb`
-                    _rem = [torch.tensor(emb)] * (self._num_aug - len(res))
+                    # => impute the missing ones
+                    _rem = [_impute_with] * (self._num_aug - len(res))
 
         keys = [x.key for x in res]
         embs_aug = list(map(load_embedding_aug_by_key, keys))
