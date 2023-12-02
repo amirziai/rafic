@@ -492,7 +492,7 @@ def main(args):
         )
         dataloader_meta_train = data.get_dataloader(
             dataset_name=args.dataset_name,
-            split="val",
+            split="train",
             batch_size=args.batch_size,
             num_way=args.num_way,
             num_support=args.num_support,
