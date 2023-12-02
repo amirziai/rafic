@@ -14,7 +14,7 @@ from torch import nn
 import torch.nn.functional as F  # pylint: disable=unused-import
 from torch.utils import tensorboard
 
-from . import data, experiments
+from . import config, data, experiments
 from .evaluation import Evaluation  # pylint: disable=unused-import
 
 NUM_INPUT_CHANNELS = 1
@@ -352,7 +352,7 @@ def main(args):
             num_aug=args.num_aug,
             aug_combine=args.aug_combine,
             aug_thr=args.aug_thr,
-            seed=0,
+            seed=args.seed,
         )
         protonet.train(dataloader_meta_train, dataloader_meta_val, writer)
     else:
@@ -373,7 +373,7 @@ def main(args):
             num_aug=args.num_aug,
             aug_combine=args.aug_combine,
             aug_thr=args.aug_thr,
-            seed=0,
+            seed=args.seed,
         )
         protonet.test(dataloader_test)
 
@@ -447,5 +447,6 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_name", type=str, default="birds")
     parser.add_argument("--aug_thr", type=float, default=None)
     parser.add_argument("--aug_combine", action="store_true")
+    parser.add_argument("--seed", type=int, default=config.SEED)
     args = parser.parse_args()
     main(args)
