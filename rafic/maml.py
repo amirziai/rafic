@@ -378,7 +378,7 @@ class MAML:
                     f"post-adaptation support accuracy: "
                     f"{accuracy_post_adapt_support:.2f}, "
                     f"post-adaptation query accuracy: "
-                    f"{accuracy_post_adapt_query:.2f}"
+                    f"[{accuracy_post_adapt_query:.2f}]"
                 )
                 writer.add_scalar("loss/val", loss, i_step)
                 writer.add_scalar(
