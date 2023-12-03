@@ -560,7 +560,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Train a MAML!")
     parser.add_argument(
-        "--log_dir", type=str, default=None, help="directory to save to or load from"
+        "--log_dir", type=str, default="logs", help="directory to save to or load from"
     )
     parser.add_argument(
         "--num_way", type=int, default=experiments.N, help="number of classes in a task"
@@ -578,12 +578,12 @@ if __name__ == "__main__":
         help="number of query examples per class in a task",
     )
     parser.add_argument(
-        "--num_inner_steps", type=int, default=1, help="number of inner-loop updates"
+        "--num_inner_steps", type=int, default=100, help="number of inner-loop updates"
     )
     parser.add_argument(
         "--inner_lr",
         type=float,
-        default=0.4,
+        default=0.04,
         help="inner-loop learning rate initialization",
     )
     parser.add_argument(
