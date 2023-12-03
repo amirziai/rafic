@@ -95,6 +95,8 @@ class _Dataset(dataset.Dataset):
         use_global_labels: bool = False,
         aug_combine: bool = False,
         aug_thr: t.Optional[float] = None,
+        aug_by_text: bool = False,
+        append_cos_sim: bool = False,
     ):
         super().__init__()
         self._path_base = path_base
@@ -116,13 +118,17 @@ class _Dataset(dataset.Dataset):
         self._metadata = self._get_metadata()
         self._keys = dict()
         self._key_to_split = dict()
+        self._aug_by_text = aug_by_text
+        self._append_cos_sim = append_cos_sim
         for split in self._metadata:
             self._keys[split] = sorted(self._metadata[split].keys())
             _shuffle(sth=self._keys[split])
             for k in self._keys[split]:
                 self._key_to_split[k] = split
-        classes = sorted(self._key_to_split)
-        self._class_key_to_global_index = {cls: idx for idx, cls in enumerate(classes)}
+        self._classes = sorted(self._key_to_split)
+        self._class_key_to_global_index = {
+            cls: idx for idx, cls in enumerate(self._classes)
+        }
         self._class_global_index_to_key = {
             idx: cls for cls, idx in self._class_key_to_global_index.items()
         }
@@ -151,14 +157,21 @@ class _Dataset(dataset.Dataset):
             np.random.seed(self._seed)
         for idx, key in enumerate(keys):
             embs = self._get_data(key=key, n=self._num_support + self._num_query)
-            label = (
-                self._class_key_to_global_index[key] if self.use_global_labels else idx
-            )
+            class_global_idx = self._class_key_to_global_index[key]
+            label = class_global_idx if self.use_global_labels else idx
             # split sampled examples into support and query
             embs_supp = embs[: self._num_support]
-            embs_supp_aug = self._augment(embs_supp)
+            embs_supp_aug = (
+                self._augment_by_text(
+                    embs_supp=embs_supp,
+                    class_global_idx=class_global_idx,
+                )
+                if self._aug_by_text
+                else self._augment(embs_supp)
+            )
             images_support.extend(embs_supp_aug)
-            images_query.extend(embs[self._num_support :])
+            embs_query = self._append1_cond(embs[self._num_support :])
+            images_query.extend(embs_query)
             labels_support.extend([label] * self.num_supp_aug)
             labels_query.extend([label] * self._num_query)
 
@@ -171,6 +184,25 @@ class _Dataset(dataset.Dataset):
         labels_query = torch.tensor(labels_query)
 
         return images_support, labels_support, images_query, labels_query
+
+    @staticmethod
+    def _append_vals(
+        embs: t.List[torch.Tensor],
+        vals: t.Union[float, t.List[float]],
+    ) -> t.List[torch.Tensor]:
+        if isinstance(vals, float):
+            vals = [vals] * len(embs)
+        return [torch.cat((e, torch.tensor(v))) for e, v in zip(embs, vals)]
+
+    def _append1_cond(self, embs: t.List[torch.Tensor]) -> t.List[torch.Tensor]:
+        return self._append_vals(embs=embs, vals=1) if self._append_cos_sim else embs
+
+    def _append_vals_cond(
+        self,
+        embs: t.List[torch.Tensor],
+        vals: t.Union[float, t.List[float]],
+    ) -> t.List[torch.Tensor]:
+        return self._append_vals(embs=embs, vals=vals) if self._append_cos_sim else embs
 
     @property
     def num_supp_aug(self) -> int:
@@ -206,10 +238,28 @@ class _Dataset(dataset.Dataset):
         path = self._get_embedding_path(key=key)
         return torch.tensor(np.load(path))
 
-    def _augment(self, embs_supp):
+    def _augment_by_text(
+        self, embs_supp, class_global_idx: int
+    ) -> t.List[torch.Tensor]:
         if self._num_aug == 0:
-            return embs_supp
+            return self._append1_cond(embs=embs_supp)
+        if self._aug_combine or self._aug_thr is not None:
+            raise NotImplementedError(
+                "aug_combine and aug_thr not implemented for aug_by_text yet"
+            )
+        text = self.get_text_query(class_global_idx=class_global_idx)
+        res = self._search.search_given_text(text=text, n=self._num_aug)
+        keys = [x.key for x in res]
+        scores = [x.score for x in res]
+        embs_aug = list(map(load_embedding_aug_by_key, keys))
+        embs_aug = self._append_vals_cond(embs=embs_aug, vals=scores)
+        return embs_supp + embs_aug
+
+    def _augment(self, embs_supp) -> t.List[torch.Tensor]:
+        if self._num_aug == 0:
+            return self._append1_cond(embs=embs_supp)
         emb = torch.stack(embs_supp).mean(axis=0).numpy()
+        embs_supp = self._append1_cond(embs=embs_supp)
         res = self._search.search_given_emb(emb=emb, n=self._num_aug)
         _rem = []
         if self._aug_thr is not None:
@@ -219,19 +269,25 @@ class _Dataset(dataset.Dataset):
             res = [x for x in res if x.score >= self._aug_thr]
             if len(res) == 0:
                 _aug = [_impute_with] * (1 if self._aug_combine else self._num_aug)
-                return embs_supp + _aug
+                return embs_supp + self._append1_cond(embs=_aug)
             if len(res) != self._num_aug:
                 # if going to combine => no action needed
                 if not self._aug_combine:
                     # if going to preserve individual embs => impute the missing ones
-                    _rem = [_impute_with] * (self._num_aug - len(res))
+                    _rem = self._append1_cond(
+                        [_impute_with] * (self._num_aug - len(res))
+                    )
 
         keys = [x.key for x in res]
+        scores = [x.score for x in res]
         embs_aug = list(map(load_embedding_aug_by_key, keys))
         if not self._aug_combine:
+            embs_aug = self._append_vals_cond(embs=embs_aug, vals=scores)
             return embs_supp + embs_aug + _rem
         else:
-            return embs_supp + [torch.stack(embs_aug).mean(axis=0)]
+            _aug = [torch.stack(embs_aug).mean(axis=0)]
+            _aug = self._append_vals_cond(embs=_aug, vals=np.mean(scores).item())
+            return embs_supp + _aug
 
 
 class AircraftDataset(_Dataset):
@@ -345,6 +401,8 @@ def get_dataloader(
     use_global_labels: bool = False,
     aug_combine: bool = False,
     aug_thr: t.Optional[float] = None,
+    aug_by_text: bool = False,
+    append_cos_sim: bool = False,
 ):
     """Returns a dataloader.DataLoader for Caltech-UCSD Birds-200-2011.
 
@@ -384,6 +442,8 @@ def get_dataloader(
         use_global_labels=use_global_labels,
         aug_combine=aug_combine,
         aug_thr=aug_thr,
+        append_cos_sim=append_cos_sim,
+        aug_by_text=aug_by_text,
     )
     choices = ds.get_class_keys_by_split(split=split)
 
@@ -400,5 +460,5 @@ def get_dataloader(
         num_workers=num_workers,
         collate_fn=lambda x: x,
         pin_memory=torch.cuda.is_available(),
-        drop_last=True,
+        drop_last=False,
     )

@@ -363,6 +363,8 @@ def main(args):
             aug_combine=args.aug_combine,
             aug_thr=args.aug_thr,
             seed=args.seed,
+            aug_by_text=args.aug_by_text,
+            append_cos_sim=args.append_cos_sim,
         )
         dataloader_meta_val = data.get_dataloader(
             dataset_name=args.dataset_name,
@@ -376,6 +378,8 @@ def main(args):
             aug_combine=args.aug_combine,
             aug_thr=args.aug_thr,
             seed=args.seed,
+            aug_by_text=args.aug_by_text,
+            append_cos_sim=args.append_cos_sim,
         )
         protonet.train(dataloader_meta_train, dataloader_meta_val, writer)
     else:
@@ -397,6 +401,8 @@ def main(args):
             aug_combine=args.aug_combine,
             aug_thr=args.aug_thr,
             seed=args.seed,
+            aug_by_text=args.aug_by_text,
+            append_cos_sim=args.append_cos_sim,
         )
         protonet.test(dataloader_test)
 
@@ -472,6 +478,8 @@ if __name__ == "__main__":
     parser.add_argument("--aug_combine", action="store_true")
     parser.add_argument("--seed", type=int, default=config.SEED)
     parser.add_argument("--num_hidden_channels", type=int, default=NUM_HIDDEN_CHANNELS)
+    parser.add_argument("--aug_by_text", action="store_true")
+    parser.add_argument("--append_cos_sim", action="store_true")
     args = parser.parse_args()
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
