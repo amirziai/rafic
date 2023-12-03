@@ -372,7 +372,7 @@ class Sampler(sampler.Sampler):
         super().__init__(None)
         self._choices = choices
         self._num_way = num_way
-        self._num_tasks = num_tasks
+        self._num_tasks = int(num_tasks)
         self._seed = seed
 
     def __iter__(self) -> t.Iterable[t.List[str]]:
