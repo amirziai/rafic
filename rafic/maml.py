@@ -44,6 +44,7 @@ class MAML:
         log_dir,
         device,
         append_cos_sim,
+        add_class_cos_sims,
     ):
         """Inits MAML.
 
@@ -73,12 +74,15 @@ class MAML:
         self.device = device
 
         # construct feature extractor
+        dim = INPUT_CLIP_EMD_DIM
+        dim += 1 if append_cos_sim else 0
+        dim += num_outputs if add_class_cos_sims else 0
         for i in range(NUM_FC_LAYERS):
             if i == 0:
                 meta_parameters[f"fc{i}"] = nn.init.xavier_uniform_(
                     torch.empty(
                         NUM_HIDDEN_FEATURES[i],
-                        INPUT_CLIP_EMD_DIM + (1 if append_cos_sim else 0),
+                        dim,
                         requires_grad=True,
                         device=self.device,
                     )
@@ -496,6 +500,7 @@ def main(args):
         log_dir=log_dir,
         device=DEVICE,
         append_cos_sim=args.append_cos_sim,
+        add_class_cos_sims=args.add_class_cos_sims,
     )
 
     if args.checkpoint_step > -1:
@@ -528,6 +533,7 @@ def main(args):
             aug_by_text=args.aug_by_text,
             append_cos_sim=args.append_cos_sim,
             train_repeat_cnt=args.train_repeat_cnt,
+            add_class_cos_sims=args.add_class_cos_sims,
         )
         dataloader_meta_val = data.get_dataloader(
             dataset_name=args.dataset_name,
@@ -543,6 +549,7 @@ def main(args):
             aug_combine=args.aug_combine,
             aug_by_text=args.aug_by_text,
             append_cos_sim=args.append_cos_sim,
+            add_class_cos_sims=args.add_class_cos_sims,
         )
         maml.train(dataloader_meta_train, dataloader_meta_val, writer)
     else:
@@ -566,6 +573,7 @@ def main(args):
             aug_combine=args.aug_combine,
             aug_by_text=args.aug_by_text,
             append_cos_sim=args.append_cos_sim,
+            add_class_cos_sims=args.add_class_cos_sims,
         )
         maml.test(dataloader_test)
 
@@ -663,9 +671,10 @@ if __name__ == "__main__":
     parser.add_argument("--seed", default=0)
     parser.add_argument("--aug_thr", type=float, default=None)
     parser.add_argument("--aug_combine", action="store_true")
-    parser.add_argument("--aug_by_text", type=float, default=0)
+    parser.add_argument("--aug_by_text", type=float, default=0.8)
     parser.add_argument("--append_cos_sim", action="store_true")
     parser.add_argument("--train_repeat_cnt", type=float, default=1)
+    parser.add_argument("--add_class_cos_sims", action="store_true")
     args = parser.parse_args()
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
