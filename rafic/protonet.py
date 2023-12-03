@@ -473,4 +473,6 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=config.SEED)
     parser.add_argument("--num_hidden_channels", type=int, default=NUM_HIDDEN_CHANNELS)
     args = parser.parse_args()
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
     main(args)
