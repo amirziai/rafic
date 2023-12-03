@@ -352,7 +352,8 @@ class MAML:
                     "train_accuracy/post_adapt_query", accuracy_query, i_step
                 )
 
-            if i_step % VAL_INTERVAL == 0:
+            # if i_step % VAL_INTERVAL == 0:
+            if i_step % 5 == 0 or i_step >= len(dataloader_meta_train) - 2:
                 losses = []
                 accuracies_pre_adapt_support = []
                 accuracies_post_adapt_support = []
@@ -373,11 +374,11 @@ class MAML:
                     f"Validation: "
                     f"loss: {loss:.3f}, "
                     f"pre-adaptation support accuracy: "
-                    f"{accuracy_pre_adapt_support:.3f}, "
+                    f"{accuracy_pre_adapt_support:.2f}, "
                     f"post-adaptation support accuracy: "
-                    f"{accuracy_post_adapt_support:.3f}, "
+                    f"{accuracy_post_adapt_support:.2f}, "
                     f"post-adaptation query accuracy: "
-                    f"{accuracy_post_adapt_query:.3f}"
+                    f"{accuracy_post_adapt_query:.2f}"
                 )
                 writer.add_scalar("loss/val", loss, i_step)
                 writer.add_scalar(
