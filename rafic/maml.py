@@ -521,7 +521,8 @@ def main(args):
             num_workers=args.num_workers,
             seed=args.seed,
             num_aug=args.num_aug,
-            aug_combine=False,
+            aug_thr=args.aug_thr,
+            aug_combine=args.aug_combine,
         )
         dataloader_meta_val = data.get_dataloader(
             dataset_name=args.dataset_name,
@@ -533,7 +534,8 @@ def main(args):
             num_workers=args.num_workers,
             seed=args.seed,
             num_aug=args.num_aug,
-            aug_combine=False,
+            aug_thr=args.aug_thr,
+            aug_combine=args.aug_combine,
         )
         maml.train(dataloader_meta_train, dataloader_meta_val, writer)
     else:
@@ -553,7 +555,8 @@ def main(args):
             num_workers=args.num_workers,
             seed=args.seed,
             num_aug=args.num_aug,
-            aug_combine=False,
+            aug_thr=args.aug_thr,
+            aug_combine=args.aug_combine,
         )
         maml.test(dataloader_test)
 
@@ -649,6 +652,8 @@ if __name__ == "__main__":
         help="whether to optimize inner-loop learning rates",
     )
     parser.add_argument("--seed", default=0)
+    parser.add_argument("--aug_thr", type=float, default=None)
+    parser.add_argument("--aug_combine", action="store_true")
 
     args = parser.parse_args()
     torch.manual_seed(args.seed)
