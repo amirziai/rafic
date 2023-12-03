@@ -95,10 +95,11 @@ class _Dataset(dataset.Dataset):
         use_global_labels: bool = False,
         aug_combine: bool = False,
         aug_thr: t.Optional[float] = None,
-        aug_by_text: bool = False,
+        aug_by_text: float = 0,
         append_cos_sim: bool = False,
         clip_class_text_embs_pattern: str = config.CLIP_CLASS_TEXT_EMBS,
     ):
+        assert 0 <= aug_by_text <= 1
         super().__init__()
         self._path_base = path_base
         self._num_support = num_support
@@ -246,10 +247,18 @@ class _Dataset(dataset.Dataset):
     def _augment(self, embs_supp, class_global_idx: int) -> t.List[torch.Tensor]:
         if self._num_aug == 0:
             return self._append1_cond(embs=embs_supp)
-        if self._aug_by_text:
-            emb = self._get_class_text_embs()[class_global_idx]
-        else:
-            emb = torch.stack(embs_supp).mean(axis=0).numpy()
+        zero = np.zeros(len(embs_supp[0]))
+        emb_txt = (
+            self._get_class_text_embs()[class_global_idx]
+            if self._aug_by_text > 0
+            else zero
+        )
+        emb_img = (
+            torch.stack(embs_supp).mean(axis=0).numpy()
+            if self._aug_by_text < 1
+            else zero
+        )
+        emb = self._aug_by_text * emb_txt + (1 - self._aug_by_text) * emb_img
         embs_supp = self._append1_cond(embs=embs_supp)
         res = self._search.search_given_emb(emb=emb, n=self._num_aug)
         _rem = []
@@ -392,7 +401,7 @@ def get_dataloader(
     use_global_labels: bool = False,
     aug_combine: bool = False,
     aug_thr: t.Optional[float] = None,
-    aug_by_text: bool = False,
+    aug_by_text: float = 0,
     append_cos_sim: bool = False,
 ):
     """Returns a dataloader.DataLoader for Caltech-UCSD Birds-200-2011.
