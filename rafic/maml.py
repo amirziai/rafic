@@ -43,6 +43,7 @@ class MAML:
         outer_lr,
         log_dir,
         device,
+        append_cos_sim,
     ):
         """Inits MAML.
 
@@ -77,7 +78,7 @@ class MAML:
                 meta_parameters[f"fc{i}"] = nn.init.xavier_uniform_(
                     torch.empty(
                         NUM_HIDDEN_FEATURES[i],
-                        INPUT_CLIP_EMD_DIM,
+                        INPUT_CLIP_EMD_DIM + (1 if append_cos_sim else 0),
                         requires_grad=True,
                         device=self.device,
                     )
@@ -483,17 +484,18 @@ def main(args):
     writer = tensorboard.SummaryWriter(log_dir=log_dir)
 
     maml = MAML(
-        args.num_way,
-        args.num_inner_steps,
-        args.num_support,
-        args.inner_lr,
-        args.learn_inner_lrs,
-        args.aug_lr,
-        args.inner_lr_aug,
-        args.learn_inner_lrs_aug,
-        args.outer_lr,
-        log_dir,
-        DEVICE,
+        num_outputs=args.num_way,
+        num_inner_steps=args.num_inner_steps,
+        num_support=args.num_support,
+        inner_lr=args.inner_lr,
+        learn_inner_lrs=args.learn_inner_lrs,
+        aug_lr=args.aug_lr,
+        inner_lr_aug=args.inner_lr_aug,
+        learn_inner_lrs_aug=args.learn_inner_lrs_aug,
+        outer_lr=args.outer_lr,
+        log_dir=log_dir,
+        device=DEVICE,
+        append_cos_sim=args.append_cos_sim,
     )
 
     if args.checkpoint_step > -1:
@@ -523,6 +525,8 @@ def main(args):
             num_aug=args.num_aug,
             aug_thr=args.aug_thr,
             aug_combine=args.aug_combine,
+            aug_by_text=args.aug_by_text,
+            append_cos_sim=args.append_cos_sim,
         )
         dataloader_meta_val = data.get_dataloader(
             dataset_name=args.dataset_name,
@@ -536,6 +540,8 @@ def main(args):
             num_aug=args.num_aug,
             aug_thr=args.aug_thr,
             aug_combine=args.aug_combine,
+            aug_by_text=args.aug_by_text,
+            append_cos_sim=args.append_cos_sim,
         )
         maml.train(dataloader_meta_train, dataloader_meta_val, writer)
     else:
@@ -557,6 +563,8 @@ def main(args):
             num_aug=args.num_aug,
             aug_thr=args.aug_thr,
             aug_combine=args.aug_combine,
+            aug_by_text=args.aug_by_text,
+            append_cos_sim=args.append_cos_sim,
         )
         maml.test(dataloader_test)
 
@@ -654,7 +662,8 @@ if __name__ == "__main__":
     parser.add_argument("--seed", default=0)
     parser.add_argument("--aug_thr", type=float, default=None)
     parser.add_argument("--aug_combine", action="store_true")
-
+    parser.add_argument("--aug_by_text", type=float, default=0)
+    parser.add_argument("--append_cos_sim", action="store_true")
     args = parser.parse_args()
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
