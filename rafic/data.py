@@ -403,6 +403,7 @@ def get_dataloader(
     aug_thr: t.Optional[float] = None,
     aug_by_text: float = 0,
     append_cos_sim: bool = False,
+    train_repeat_cnt: int = 1,
 ):
     """Returns a dataloader.DataLoader for Caltech-UCSD Birds-200-2011.
 
@@ -421,6 +422,11 @@ def get_dataloader(
         use_global_labels (bool): if false, will re-index labels to [0, 1, ..., num_classes - 1]
         aug_thr (float): if provided, will be used for filtering retrieved images.
         aug_combine (bool): if true, will average all retrieved images into a single vector.
+        aug_by_text (float): % of the class text embedding to use for search. if 1, only text emb is used.
+                             if 0, only average of the support embeddings are used.
+                             for sth in-between, it's a weighted average of the two.
+        append_cos_sim (bool): if true, appends cos sim to embedding for retrieved images and 1 for support.
+        train_repeat_cnt (int): number of times to repeat the training rounds. no effect on non-training splits.
     """
     assert num_aug >= 0
 
@@ -446,11 +452,11 @@ def get_dataloader(
         aug_by_text=aug_by_text,
     )
     choices = ds.get_class_keys_by_split(split=split)
-
+    repeat = 1 if split != "train" else train_repeat_cnt
     sampler_obj = Sampler(
         choices=choices,
         num_way=num_way,
-        num_tasks=len(choices),
+        num_tasks=len(choices) * repeat,
         seed=seed,
     )
     return dataloader.DataLoader(
