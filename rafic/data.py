@@ -192,7 +192,7 @@ class _Dataset(dataset.Dataset):
     ) -> t.List[torch.Tensor]:
         if isinstance(vals, (int, float)):
             vals = [float(vals)] * len(embs)
-        return [torch.cat((e, torch.tensor(v))) for e, v in zip(embs, vals)]
+        return [torch.cat((e, torch.tensor([v]))) for e, v in zip(embs, vals)]
 
     def _append1_cond(self, embs: t.List[torch.Tensor]) -> t.List[torch.Tensor]:
         return self._append_vals(embs=embs, vals=1.0) if self._append_cos_sim else embs
