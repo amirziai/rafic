@@ -222,14 +222,16 @@ class MAML:
                     ## code for separate loss - support and augment
                     logits_support = self._forward(
                         images[: self._num_support], parameters
-                    )  # computes the logits
+                    )  # computes the support data logits
                     loss_support = F.cross_entropy(
                         logits_support, labels[: self._num_support]
                     )
                     logits_aug = self._forward(
                         images[self._num_support :], parameters
-                    )  # computes the logits
-                    loss_aug = F.cross_entropy(logits_aug, labels[self._num_support :])
+                    )  # computes the augmented data logits
+                    # use the cos sim as weights in augmented data loss computation
+                    aug_weights = images[self._num_support :, -1]
+                    loss_aug = F.cross_entropy(logits_aug, labels[self._num_support :], aug_weights)
                     gradients_support = torch.autograd.grad(
                         loss_support, parameters.values(), create_graph=train
                     )
