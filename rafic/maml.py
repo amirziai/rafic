@@ -235,7 +235,9 @@ class MAML:
                     )  # computes the augmented data logits
                     # use the cos sim as weights in augmented data loss computation
                     aug_weights = images[self._num_support :, -1]
-                    loss_aug = F.cross_entropy(logits_aug, labels[self._num_support :], aug_weights)
+                    loss_aug = F.cross_entropy(
+                        logits_aug, labels[self._num_support :], aug_weights
+                    )
                     gradients_support = torch.autograd.grad(
                         loss_support, parameters.values(), create_graph=train
                     )
