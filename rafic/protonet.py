@@ -26,13 +26,14 @@ SAVE_INTERVAL = 100
 PRINT_INTERVAL = 1
 VAL_INTERVAL = PRINT_INTERVAL * 1
 NUM_TEST_TASKS = 600
+CLIP_EMB_DIM = 768
 
 
 class ProtoNetNetwork(nn.Module):
-    def __init__(self, device):
+    def __init__(self, device, num_hidden_channels: int = NUM_HIDDEN_CHANNELS):
         super().__init__()
         layers = [
-            nn.Linear(in_features=768, out_features=NUM_HIDDEN_CHANNELS),
+            nn.Linear(in_features=CLIP_EMB_DIM, out_features=num_hidden_channels),
             nn.ReLU(),
         ]
         self._layers = nn.Sequential(*layers)
@@ -56,6 +57,7 @@ class ProtoNet:
         val_interval=None,
         save_interval=None,
         bio=False,
+        num_hidden_channels: int = NUM_HIDDEN_CHANNELS,
     ):
         """Inits ProtoNet.
 
@@ -66,7 +68,9 @@ class ProtoNet:
         """
         self.device = device
         if learner is None:
-            self._network = ProtoNetNetwork(device)
+            self._network = ProtoNetNetwork(
+                device, num_hidden_channels=num_hidden_channels
+            )
         else:
             self._network = learner.to(device)
 
@@ -192,9 +196,12 @@ class ProtoNet:
             # if i_step % self.val_interval == 0:
             if i_step % 5 == 0 or i_step >= MAX_TRAIN - 2:
                 print("Start Validation...")
+                cnt, cnt_correct = 0, 0
                 with torch.no_grad():
                     losses, accuracies_support, accuracies_query = [], [], []
                     for i, val_task_batch in enumerate(dataloader_meta_val):
+                        n = len(val_task_batch[0][0])
+                        cnt += n
                         if self.bio and i > 600:
                             break
                         loss, accuracy_support, accuracy_query = self._step(
@@ -203,10 +210,16 @@ class ProtoNet:
                         losses.append(loss.item())
                         accuracies_support.append(accuracy_support)
                         accuracies_query.append(accuracy_query)
+                        cnt_correct += round(accuracy_query * n)
                     loss = np.mean(losses)
                     accuracy_support = np.mean(accuracies_support)
                     accuracy_query = np.mean(accuracies_query)
-                    ci95 = 1.96 * np.std(accuracies_query) / np.sqrt(600 * 4)
+                    # ci95 = 1.96 * np.std(accuracies_query) / np.sqrt(600 * 4)
+                    ci95 = (
+                        1.96
+                        * np.std(accuracies_query)
+                        / np.sqrt(len(dataloader_meta_val))
+                    )
                 if self.bio:
                     print(
                         f"Validation: "
@@ -220,7 +233,8 @@ class ProtoNet:
                         f"Validation: "
                         f"loss: {loss:.3f}, "
                         f"support accuracy: {accuracy_support:.3f}, "
-                        f"query accuracy: {accuracy_query:.3f}"
+                        f"query accuracy: {accuracy_query:.3f}, "
+                        f"Ci95: {ci95:.3f} [acc: {cnt_correct / cnt:.2f}]",
                     )
                 writer.add_scalar("loss/val", loss, i_step)
                 writer.add_scalar("val_accuracy/support", accuracy_support, i_step)
@@ -313,7 +327,14 @@ def main(args):
     print(f"log_dir: {log_dir}")
     writer = tensorboard.SummaryWriter(log_dir=log_dir)
 
-    protonet = ProtoNet(args.learning_rate, log_dir, DEVICE, args.compile, args.backend)
+    protonet = ProtoNet(
+        args.learning_rate,
+        log_dir,
+        DEVICE,
+        args.compile,
+        args.backend,
+        num_hidden_channels=args.num_hidden_channels,
+    )
 
     if args.checkpoint_step > -1:
         protonet.load(args.checkpoint_step)
@@ -450,5 +471,6 @@ if __name__ == "__main__":
     parser.add_argument("--aug_thr", type=float, default=None)
     parser.add_argument("--aug_combine", action="store_true")
     parser.add_argument("--seed", type=int, default=config.SEED)
+    parser.add_argument("--num_hidden_channels", type=int, default=NUM_HIDDEN_CHANNELS)
     args = parser.parse_args()
     main(args)
