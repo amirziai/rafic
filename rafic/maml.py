@@ -17,9 +17,9 @@ torch.multiprocessing.set_sharing_strategy("file_system")
 
 
 # MAML with FC
-NUM_FC_LAYERS = 1
+NUM_FC_LAYERS = 2
 INPUT_CLIP_EMD_DIM = 768
-NUM_HIDDEN_FEATURES = [64]
+NUM_HIDDEN_FEATURES = [128, 32]
 SUMMARY_INTERVAL = 10
 SAVE_INTERVAL = 100
 LOG_INTERVAL = 1
@@ -34,6 +34,7 @@ class MAML:
         self,
         num_outputs,
         num_inner_steps,
+        num_way,
         num_support,
         inner_lr,
         learn_inner_lrs,
@@ -73,7 +74,6 @@ class MAML:
 
         self.device = device
 
-        self._append_cos_sim = append_cos_sim
         # construct feature extractor
         dim = INPUT_CLIP_EMD_DIM
         dim += 1 if append_cos_sim else 0
@@ -151,6 +151,7 @@ class MAML:
 
         self._start_train_step = 0
         self._num_support = num_support
+        self._num_way = num_way
         self._aug_lr = aug_lr
 
     def _forward(self, images, parameters):
@@ -224,25 +225,26 @@ class MAML:
                     for (name, param), grad in zip(parameters.items(), gradients):
                         parameters[name] = param - self._inner_lrs[name] * grad
                 else:
-                    ## code for separate loss - support and augment
+                    # code for separate loss - support and augment
                     logits_support = self._forward(
-                        images[: self._num_support], parameters
+                        images[: self._num_support * self._num_way], parameters
                     )  # computes the support data logits
                     loss_support = F.cross_entropy(
-                        logits_support, labels[: self._num_support]
+                        logits_support, labels[: self._num_support * self._num_way]
                     )
                     logits_aug = self._forward(
-                        images[self._num_support :], parameters
+                        images[self._num_support * self._num_way :], parameters
                     )  # computes the augmented data logits
                     # use the cos sim as weights in augmented data loss computation
-                    aug_weights = (
-                        images[self._num_support :, -1]
-                        if self._append_cos_sim
-                        else None
+                    aug_weights = images[self._num_support * self._num_way :, -1]
+                    loss_aug_raw = F.cross_entropy(
+                        logits_aug,
+                        labels[self._num_support * self._num_way :],
+                        reduction="none",
                     )
-                    loss_aug = F.cross_entropy(
-                        logits_aug, labels[self._num_support :], aug_weights
-                    )
+                    weighted_aug_loss = loss_aug_raw * aug_weights
+                    loss_aug = torch.mean(weighted_aug_loss)
+
                     gradients_support = torch.autograd.grad(
                         loss_support, parameters.values(), create_graph=train
                     )
@@ -300,18 +302,18 @@ class MAML:
             # and accuracy_query_batch.
             # support accuracy: The first element (index 0) should be the accuracy before any steps are taken.
 
-            ## inner loop
+            # inner loop
             parameters, accuracies_support, _ = self._inner_loop(
                 images_support, labels_support, train
             )
 
-            ## query set
+            # query set
             logits_query = self._forward(images_query, parameters)
             loss_query = F.cross_entropy(logits_query, labels_query)
             accuracy_query = util.score(logits_query, labels_query)
             accuracy_query_batch.append(accuracy_query)
 
-            ## batch
+            # batch
             accuracies_support_batch.append(accuracies_support)
             outer_loss_batch.append(loss_query)
 
@@ -500,6 +502,7 @@ def main(args):
         num_outputs=args.num_way,
         num_inner_steps=args.num_inner_steps,
         num_support=args.num_support,
+        num_way=args.num_way,
         inner_lr=args.inner_lr,
         learn_inner_lrs=args.learn_inner_lrs,
         aug_lr=args.aug_lr,
