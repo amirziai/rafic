@@ -15,6 +15,7 @@ DATASET_BIRDS_FRACTION_VAL = 0.15
 
 # CLIP
 CLIP_MODEL_TYPE = "ViT-L/14@336px"
+CLIP_CLASS_TEXT_EMBS = "/root/data/rafic/class-text-embs-{dataset_name}.pickle"
 SEED = 0
 
 # general

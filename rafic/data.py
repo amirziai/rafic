@@ -97,6 +97,7 @@ class _Dataset(dataset.Dataset):
         aug_thr: t.Optional[float] = None,
         aug_by_text: bool = False,
         append_cos_sim: bool = False,
+        clip_class_text_embs_pattern: str = config.CLIP_CLASS_TEXT_EMBS,
     ):
         super().__init__()
         self._path_base = path_base
@@ -120,6 +121,7 @@ class _Dataset(dataset.Dataset):
         self._key_to_split = dict()
         self._aug_by_text = aug_by_text
         self._append_cos_sim = append_cos_sim
+        self._clip_class_text_embs_pattern = clip_class_text_embs_pattern
         for split in self._metadata:
             self._keys[split] = sorted(self._metadata[split].keys())
             _shuffle(sth=self._keys[split])
@@ -161,13 +163,9 @@ class _Dataset(dataset.Dataset):
             label = class_global_idx if self.use_global_labels else idx
             # split sampled examples into support and query
             embs_supp = embs[: self._num_support]
-            embs_supp_aug = (
-                self._augment_by_text(
-                    embs_supp=embs_supp,
-                    class_global_idx=class_global_idx,
-                )
-                if self._aug_by_text
-                else self._augment(embs_supp)
+            embs_supp_aug = self._augment(
+                embs_supp=embs_supp,
+                class_global_idx=class_global_idx,
             )
             images_support.extend(embs_supp_aug)
             embs_query = self._append1_cond(embs[self._num_support :])
@@ -238,27 +236,20 @@ class _Dataset(dataset.Dataset):
         path = self._get_embedding_path(key=key)
         return torch.tensor(np.load(path))
 
-    def _augment_by_text(
-        self, embs_supp, class_global_idx: int
-    ) -> t.List[torch.Tensor]:
-        if self._num_aug == 0:
-            return self._append1_cond(embs=embs_supp)
-        if self._aug_combine or self._aug_thr is not None:
-            raise NotImplementedError(
-                "aug_combine and aug_thr not implemented for aug_by_text yet"
-            )
-        text = self.get_text_query(class_global_idx=class_global_idx)
-        res = self._search.search_given_text(text=text, n=self._num_aug)
-        keys = [x.key for x in res]
-        scores = [x.score for x in res]
-        embs_aug = list(map(load_embedding_aug_by_key, keys))
-        embs_aug = self._append_vals_cond(embs=embs_aug, vals=scores)
-        return embs_supp + embs_aug
+    @functools.lru_cache()
+    def _get_class_text_embs(self) -> np.ndarray:
+        path = self._clip_class_text_embs_pattern.format(
+            dataset_name=self._DATASET_NAME
+        )
+        return pickle.load(open(path, "rb"))
 
-    def _augment(self, embs_supp) -> t.List[torch.Tensor]:
+    def _augment(self, embs_supp, class_global_idx: int) -> t.List[torch.Tensor]:
         if self._num_aug == 0:
             return self._append1_cond(embs=embs_supp)
-        emb = torch.stack(embs_supp).mean(axis=0).numpy()
+        if self._aug_by_text:
+            emb = self._get_class_text_embs()[class_global_idx]
+        else:
+            emb = torch.stack(embs_supp).mean(axis=0).numpy()
         embs_supp = self._append1_cond(embs=embs_supp)
         res = self._search.search_given_emb(emb=emb, n=self._num_aug)
         _rem = []
