@@ -73,6 +73,7 @@ class MAML:
         meta_parameters = {}
 
         self.device = device
+        self._append_cos_sim = append_cos_sim
 
         # construct feature extractor
         dim = INPUT_CLIP_EMD_DIM
@@ -236,7 +237,11 @@ class MAML:
                         images[self._num_support * self._num_way :], parameters
                     )  # computes the augmented data logits
                     # use the cos sim as weights in augmented data loss computation
-                    aug_weights = images[self._num_support * self._num_way :, -1]
+                    aug_weights = (
+                        images[self._num_support * self._num_way :, -1]
+                        if self._append_cos_sim
+                        else None
+                    )
                     loss_aug_raw = F.cross_entropy(
                         logits_aug,
                         labels[self._num_support * self._num_way :],
