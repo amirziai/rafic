@@ -353,7 +353,7 @@ class MAML:
                 )
 
             # if i_step % VAL_INTERVAL == 0:
-            if i_step % 5 == 0 or i_step >= len(dataloader_meta_train) - 2:
+            if i_step % 10 == 0 or i_step >= len(dataloader_meta_train) - 1:
                 losses = []
                 accuracies_pre_adapt_support = []
                 accuracies_post_adapt_support = []

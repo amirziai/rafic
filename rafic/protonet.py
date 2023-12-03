@@ -194,7 +194,7 @@ class ProtoNet:
                 writer.add_scalar("train_accuracy/query", accuracy_query.item(), i_step)
 
             # if i_step % self.val_interval == 0:
-            if i_step % 5 == 0 or i_step >= MAX_TRAIN - 2:
+            if i_step % 10 == 0 or i_step >= MAX_TRAIN - 1:
                 print("Start Validation...")
                 cnt, cnt_correct = 0, 0
                 with torch.no_grad():
