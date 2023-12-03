@@ -518,7 +518,7 @@ def main(args):
             num_support=args.num_support,
             num_query=args.num_query,
             num_workers=args.num_workers,
-            seed=0,
+            seed=args.seed,
             num_aug=args.num_aug,
             aug_combine=False,
         )
@@ -530,7 +530,7 @@ def main(args):
             num_support=args.num_support,
             num_query=args.num_query,
             num_workers=args.num_workers,
-            seed=0,
+            seed=args.seed,
             num_aug=args.num_aug,
             aug_combine=False,
         )
@@ -550,7 +550,7 @@ def main(args):
             num_support=args.num_support,
             num_query=args.num_query,
             num_workers=args.num_workers,
-            seed=0,
+            seed=args.seed,
             num_aug=args.num_aug,
             aug_combine=False,
         )
@@ -647,7 +647,9 @@ if __name__ == "__main__":
         action="store_true",
         help="whether to optimize inner-loop learning rates",
     )
+    parser.add_argument("--seed", default=0)
 
     args = parser.parse_args()
-
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
     main(args)
