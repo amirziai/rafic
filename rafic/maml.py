@@ -240,7 +240,7 @@ class MAML:
                     aug_weights = (
                         images[self._num_support * self._num_way :, -1]
                         if self._append_cos_sim
-                        else None
+                        else 1
                     )
                     loss_aug_raw = F.cross_entropy(
                         logits_aug,
