@@ -335,6 +335,9 @@ def main(args):
     print(f"log_dir: {log_dir}")
     writer = tensorboard.SummaryWriter(log_dir=log_dir)
 
+    input_size = CLIP_EMB_DIM
+    input_size += 1 if args.append_cos_sim else 0
+    input_size += args.num_way if args.add_class_cos_sims else 0
     protonet = ProtoNet(
         learning_rate=args.learning_rate,
         log_dir=log_dir,
@@ -342,7 +345,7 @@ def main(args):
         compile=args.compile,
         backend=args.backend,
         num_hidden_channels=args.num_hidden_channels,
-        input_size=(1 if args.append_cos_sim else 0) + CLIP_EMB_DIM,
+        input_size=input_size,
     )
 
     if args.checkpoint_step > -1:
@@ -351,9 +354,6 @@ def main(args):
         print("Checkpoint loading skipped.")
 
     if not args.test:
-        # num_training_tasks = args.batch_size * (
-        #     args.num_train_iterations - args.checkpoint_step - 1
-        # )
         print(
             f"Training on tasks with composition "
             f"num_way={args.num_way}, "
@@ -375,6 +375,7 @@ def main(args):
             aug_by_text=args.aug_by_text,
             append_cos_sim=args.append_cos_sim,
             train_repeat_cnt=args.train_repeat_cnt,
+            add_class_cos_sims=args.add_class_cos_sims,
         )
         dataloader_meta_val = data.get_dataloader(
             dataset_name=args.dataset_name,
@@ -390,6 +391,7 @@ def main(args):
             seed=args.seed,
             aug_by_text=args.aug_by_text,
             append_cos_sim=args.append_cos_sim,
+            add_class_cos_sims=args.add_class_cos_sims,
         )
         protonet.train(dataloader_meta_train, dataloader_meta_val, writer)
     else:
@@ -413,6 +415,7 @@ def main(args):
             seed=args.seed,
             aug_by_text=args.aug_by_text,
             append_cos_sim=args.append_cos_sim,
+            add_class_cos_sims=args.add_class_cos_sims,
         )
         protonet.test(dataloader_test)
 
@@ -491,6 +494,7 @@ if __name__ == "__main__":
     parser.add_argument("--aug_by_text", type=float, default=0)
     parser.add_argument("--append_cos_sim", action="store_true")
     parser.add_argument("--train_repeat_cnt", type=float, default=1)
+    parser.add_argument("--add_class_cos_sims", action="store_true")
     args = parser.parse_args()
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)

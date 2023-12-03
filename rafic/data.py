@@ -92,12 +92,14 @@ class _Dataset(dataset.Dataset):
         seed: int = None,
         search_index_big: bool = True,
         faiss_index_path: str = config.PATH_FAISS_INDEX,
+        clip_class_text_embs_pattern: str = config.CLIP_CLASS_TEXT_EMBS,
         use_global_labels: bool = False,
         aug_combine: bool = False,
         aug_thr: t.Optional[float] = None,
         aug_by_text: float = 0,
         append_cos_sim: bool = False,
-        clip_class_text_embs_pattern: str = config.CLIP_CLASS_TEXT_EMBS,
+        add_class_cos_sims: bool = False,
+        clip_emb_dim: int = config.CLIP_EMB_DIM,
     ):
         assert 0 <= aug_by_text <= 1
         super().__init__()
@@ -122,7 +124,9 @@ class _Dataset(dataset.Dataset):
         self._key_to_split = dict()
         self._aug_by_text = aug_by_text
         self._append_cos_sim = append_cos_sim
+        self._add_class_cos_sims = add_class_cos_sims
         self._clip_class_text_embs_pattern = clip_class_text_embs_pattern
+        self._clip_emb_dim = clip_emb_dim
         for split in self._metadata:
             self._keys[split] = sorted(self._metadata[split].keys())
             _shuffle(sth=self._keys[split])
@@ -156,11 +160,13 @@ class _Dataset(dataset.Dataset):
         images_support, images_query = [], []
         labels_support, labels_query = [], []
 
+        uniq_global_idxs = []
         if self._seed is not None:
             np.random.seed(self._seed)
         for idx, key in enumerate(keys):
             embs = self._get_data(key=key, n=self._num_support + self._num_query)
             class_global_idx = self._class_key_to_global_index[key]
+            uniq_global_idxs.append(class_global_idx)
             label = class_global_idx if self.use_global_labels else idx
             # split sampled examples into support and query
             embs_supp = embs[: self._num_support]
@@ -178,11 +184,27 @@ class _Dataset(dataset.Dataset):
         # D is the size of CLIP embeddings (e.g. 768)
         # N is the number of "ways" or classes in the few-shot classification task
         images_support = torch.stack(images_support).float()  # shape (N*(S+A), D)
+        images_support = self._append_class_cos_sims(
+            embs=images_support, uniq_global_idxs=uniq_global_idxs
+        )
         labels_support = torch.tensor(labels_support)  # shape (N*S)
         images_query = torch.stack(images_query).float()
+        images_query = self._append_class_cos_sims(
+            embs=images_query, uniq_global_idxs=uniq_global_idxs
+        )
         labels_query = torch.tensor(labels_query)
 
         return images_support, labels_support, images_query, labels_query
+
+    def _append_class_cos_sims(
+        self, embs: torch.Tensor, uniq_global_idxs: t.List[int]
+    ) -> torch.Tensor:
+        if not self._add_class_cos_sims:
+            return embs
+        embs_clip = embs[:, : self._clip_emb_dim]
+        embs_cls = torch.tensor(self._get_class_text_embs()[uniq_global_idxs])
+        sims = embs_clip @ embs_cls.T
+        return torch.hstack((embs, sims))
 
     @staticmethod
     def _append_vals(
@@ -404,6 +426,7 @@ def get_dataloader(
     aug_by_text: float = 0,
     append_cos_sim: bool = False,
     train_repeat_cnt: int = 1,
+    add_class_cos_sims: bool = False,
 ):
     """Returns a dataloader.DataLoader for Caltech-UCSD Birds-200-2011.
 
@@ -427,6 +450,7 @@ def get_dataloader(
                              for sth in-between, it's a weighted average of the two.
         append_cos_sim (bool): if true, appends cos sim to embedding for retrieved images and 1 for support.
         train_repeat_cnt (int): number of times to repeat the training rounds. no effect on non-training splits.
+        add_class_cos_sims (bool): if true, adds cos sim of the CLIP emb to each of the N text class embedding.
     """
     assert num_aug >= 0
 
@@ -450,6 +474,7 @@ def get_dataloader(
         aug_thr=aug_thr,
         append_cos_sim=append_cos_sim,
         aug_by_text=aug_by_text,
+        add_class_cos_sims=add_class_cos_sims,
     )
     choices = ds.get_class_keys_by_split(split=split)
     repeat = 1 if split != "train" else train_repeat_cnt
