@@ -8,13 +8,15 @@ from . import config, data
 from .evaluation import Evaluation
 
 
-K_VALS = (1, 2, 5)
+K_VALS = (1,)
 A_VALS = (0, 1, 2, 5)
 N = 10
 Q = 5
 BATCH_SIZE = 8
 NUM_WORKERS = 8
 AUG_COMBINE = False
+AUG_BY_TEXT = 0.8
+APPEND_COS_SIM = True
 
 
 def _get_val_dataloader(
@@ -25,6 +27,8 @@ def _get_val_dataloader(
     q: int = Q,
     seed: int = config.SEED,
     aug_combine: bool = AUG_COMBINE,
+    aug_by_text: bool = AUG_BY_TEXT,
+    append_cos_sim: bool = APPEND_COS_SIM,
 ) -> float:
     return data.get_dataloader(
         dataset_name=dataset_name,
@@ -37,6 +41,8 @@ def _get_val_dataloader(
         seed=seed,
         num_aug=a,
         aug_combine=aug_combine,
+        aug_by_text=aug_by_text,
+        append_cos_sim=append_cos_sim if a > 0 else False,
     )
 
 
@@ -72,6 +78,8 @@ def non_parametric_image_embeddings(
     n: int = N,
     q: int = Q,
     aug_combine: bool = AUG_COMBINE,
+    aug_by_text: bool = AUG_BY_TEXT,
+    append_cos_sim: bool = APPEND_COS_SIM,
 ) -> pd.DataFrame:
     acc_fn = functools.partial(
         Evaluation.eval_non_parametric_nn,
@@ -84,6 +92,8 @@ def non_parametric_image_embeddings(
         n=n,
         q=q,
         aug_combine=aug_combine,
+        aug_by_text=aug_by_text,
+        append_cos_sim=append_cos_sim,
     )
 
 
@@ -95,6 +105,8 @@ def logistic_regression(
     n: int = N,
     q: int = Q,
     aug_combine: bool = AUG_COMBINE,
+    aug_by_text: bool = AUG_BY_TEXT,
+    append_cos_sim: bool = APPEND_COS_SIM,
 ) -> pd.DataFrame:
     acc_fn = functools.partial(
         Evaluation.eval_clf,
@@ -108,6 +120,8 @@ def logistic_regression(
         n=n,
         q=q,
         aug_combine=aug_combine,
+        aug_by_text=aug_by_text,
+        append_cos_sim=append_cos_sim,
     )
 
 
@@ -119,6 +133,8 @@ def _run(
     n: int = N,
     q: int = Q,
     aug_combine: bool = AUG_COMBINE,
+    aug_by_text: bool = AUG_BY_TEXT,
+    append_cos_sim: bool = APPEND_COS_SIM,
 ) -> pd.DataFrame:
     return pd.DataFrame(
         dict(
@@ -132,6 +148,8 @@ def _run(
                     n=n,
                     q=q,
                     aug_combine=aug_combine,
+                    aug_by_text=aug_by_text,
+                    append_cos_sim=append_cos_sim,
                 )
             ),
         )
