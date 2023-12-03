@@ -404,7 +404,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Train a ProtoNet!")
     parser.add_argument(
-        "--log_dir", type=str, default=None, help="directory to save to or load from"
+        "--log_dir", type=str, default="logs", help="directory to save to or load from"
     )
     parser.add_argument(
         "--num_way", type=int, default=experiments.N, help="number of classes in a task"

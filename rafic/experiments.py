@@ -12,7 +12,7 @@ K_VALS = (1, 2, 5)
 A_VALS = (0, 1, 2, 5)
 N = 10
 Q = 5
-BATCH_SIZE = 16
+BATCH_SIZE = 8
 NUM_WORKERS = 8
 AUG_COMBINE = False
 
