@@ -30,10 +30,15 @@ CLIP_EMB_DIM = 768
 
 
 class ProtoNetNetwork(nn.Module):
-    def __init__(self, device, num_hidden_channels: int = NUM_HIDDEN_CHANNELS):
+    def __init__(
+        self,
+        input_size: int,
+        device,
+        num_hidden_channels: int = NUM_HIDDEN_CHANNELS,
+    ):
         super().__init__()
         layers = [
-            nn.Linear(in_features=CLIP_EMB_DIM, out_features=num_hidden_channels),
+            nn.Linear(in_features=input_size, out_features=num_hidden_channels),
             nn.ReLU(),
         ]
         self._layers = nn.Sequential(*layers)
@@ -51,6 +56,7 @@ class ProtoNet:
         learning_rate,
         log_dir,
         device,
+        input_size,
         compile=False,
         backend=None,
         learner=None,
@@ -69,7 +75,9 @@ class ProtoNet:
         self.device = device
         if learner is None:
             self._network = ProtoNetNetwork(
-                device, num_hidden_channels=num_hidden_channels
+                input_size=input_size,
+                device=device,
+                num_hidden_channels=num_hidden_channels,
             )
         else:
             self._network = learner.to(device)
@@ -328,12 +336,13 @@ def main(args):
     writer = tensorboard.SummaryWriter(log_dir=log_dir)
 
     protonet = ProtoNet(
-        args.learning_rate,
-        log_dir,
-        DEVICE,
-        args.compile,
-        args.backend,
+        learning_rate=args.learning_rate,
+        log_dir=log_dir,
+        device=DEVICE,
+        compile=args.compile,
+        backend=args.backend,
         num_hidden_channels=args.num_hidden_channels,
+        input_size=(1 if args.append_cos_sim else 0) + CLIP_EMB_DIM,
     )
 
     if args.checkpoint_step > -1:
