@@ -25,6 +25,14 @@ def get_rng(seed):
     return np.random.default_rng(seed) if seed is not None else np.random.default_rng()
 
 
+def get_other_dataset(dataset_name: str) -> str:
+    """
+    Returns the first dataset name that is not `dataset_name` from the list of all datasets.
+    E.g. If datasets are [x, y] and input is x, it returns y.
+    """
+    return next(d for d in config.DATASETS if d != dataset_name)
+
+
 def load_image(file_path):
     """Loads and transforms an Caltech-UCSD Birds-200-2011 image.
 

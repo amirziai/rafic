@@ -21,3 +21,4 @@ SEED = 0
 
 # general
 NUM_WORKERS = 2
+DATASETS = ("birds", "aircraft")

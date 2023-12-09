@@ -553,7 +553,11 @@ def main(args):
             add_class_cos_sims=args.add_class_cos_sims,
         )
         dataloader_meta_val = data.get_dataloader(
-            dataset_name=args.dataset_name,
+            dataset_name=(
+                data.get_other_dataset(dataset_name=args.dataset_name)
+                if args.cross_eval
+                else args.dataset_name
+            ),
             split="val",
             batch_size=args.batch_size,
             num_way=args.num_way,
@@ -692,6 +696,11 @@ if __name__ == "__main__":
     parser.add_argument("--append_cos_sim", action="store_true")
     parser.add_argument("--train_repeat_cnt", type=float, default=1)
     parser.add_argument("--add_class_cos_sims", action="store_true")
+    parser.add_argument(
+        "--cross_eval",
+        action="store_true",
+        help="if true, validation is done on the other dataset.",
+    )
     args = parser.parse_args()
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)

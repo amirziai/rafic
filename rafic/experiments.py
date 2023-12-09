@@ -9,7 +9,7 @@ from .evaluation import Evaluation
 
 
 K_VALS = (1,)
-A_VALS = (0, 1, 2, 5)
+A_VALS = (0, 1, 2, 5, 20, 50)
 N = 10
 Q = 5
 BATCH_SIZE = 8
