@@ -1,8 +1,25 @@
 # Retrieval-Augmented Few-shot Image Classification (RAFIC)
 Stanford CS330 project
 
-## Demos
-- [Search and eval](search-and-eval-demo.ipynb)
+# Baseline
+Baselines
+```python
+from rafic import experiments as exp
+
+res = dict()
+for dataset in ("birds", "aircraft"):
+  res[dataset] = dict(
+    zs=exp.zero_shot_text_label(dataset_name=dataset),
+    lr=exp.logistic_regression(dataset_name=dataset),
+  )  
+```
+
+# Experiments
+```shell
+bash exp1.sh
+bash exp2.sh
+bash exp3.sh
+```
 
 ## Env
 - Grab a conda env, same as HW2
@@ -12,10 +29,3 @@ Stanford CS330 project
 ## Data
 - `rafic/config.py` has a list of all the required data files
 - Download from GDrive and place things in the appropriate folders
-  - Unzip `bird_embeddings.zip` into `data/birds/CUB_200_2011/CUB_200_2011/`
-
-## ProtoNet
-From the base directory:
-```shell
-python -m rafic.protonet --log_dir logs --num_support 2 --num_aug 1
-```
