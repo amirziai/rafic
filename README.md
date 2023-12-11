@@ -28,4 +28,4 @@ bash exp3.sh
 
 ## Data
 - `rafic/config.py` has a list of all the required data files
-- Download from GDrive and place things in the appropriate folders
+- Download from [GDrive](https://drive.google.com/drive/folders/14yglk5frfSxRCl_GJK1paJofLwxpuecT) and place things in the appropriate folders
