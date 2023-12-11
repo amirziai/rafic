@@ -1,0 +1,39 @@
+# taken from Stanford CS330 code
+name: rafic
+channels:
+  - defaults
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.9
+  - cloudpickle=2.2.1
+  - cycler=0.11.0
+  - h5py=3.7.0
+  - lockfile=0.12.2
+  - opt-einsum=3.0.0
+  - packaging=23.0
+  - pandas=1.5.3
+  - pickleshare=0.7.5
+  - python-dateutil=2.8.2
+  - requests=2.29.0
+  - scipy=1.10.1
+  - six=1.16.0
+  - scikit-learn=1.2.2
+  - tensorboard=2.12.1
+  - pytest=7.3.1
+  - imageio=2.31.1
+  - svglib=1.5.1
+  - googledrivedownloader=0.4
+  - matplotlib=3.7.1
+  - pip=23.1.2
+  - pip:
+    - timeout_decorator
+    - "--find-links https://download.pytorch.org/whl/torch_stable.html"
+    - torch==2.0.1; sys_platform != "linux" and sys_platform != "win32"
+    - torch==2.0.1+cpu; sys_platform == "linux" or sys_platform == "win32"
+    - rouge-score==0.1.2
+    # Manage the below packages over pip to avoid segmentation fault in transformers on Mac
+    - huggingface-hub==0.16.4
+    - transformers==4.31.0
+    - datasets==2.13.1
+    - numpy==1.25.1

@@ -22,7 +22,7 @@ bash exp3.sh
 ```
 
 ## Env
-- Grab a conda env, same as HW2
+- Install the conda env
 - `pip install -r requirements.txt`
 - Install CLIP: `pip install git+https://github.com/openai/CLIP.git`
 
