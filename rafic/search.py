@@ -19,10 +19,16 @@ except ImportError:
     """
     )
 
-import config
+from . import config
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class SearchResult:
+    key: str
+    score: float
 
 
 @dataclass(frozen=True)
@@ -36,7 +42,7 @@ class CLIPSearch:
     faiss_index_path: str = config.PATH_FAISS_INDEX
     image_path_base: str = config.PATH_IMAGES_LAION
 
-    def search_given_emb(self, emb: np.ndarray, n: int) -> t.List[str]:
+    def search_given_emb(self, emb: np.ndarray, n: int) -> t.List[SearchResult]:
         """
         Nearest neighbor search given an input embedding.
         Won't filter out the exact match (i.e. if the image is already in the index).
@@ -49,23 +55,39 @@ class CLIPSearch:
         assert emb_dim[0] == self._embs.shape[1], "emb must be the same dim as index"
         emb = np.expand_dims(emb, axis=0)
         emb = normalize(emb, axis=1)
-        _, idxs = self._faiss_index.search(emb, k=n)
+        scores, idxs = self._faiss_index.search(emb, k=n)
         idxs = idxs.squeeze() if n >= 2 else [idxs.item()]
-        return [self._idx_to_key_lookup[idx] for idx in idxs]
+        scores = scores.squeeze() if n >= 2 else [scores.item()]
+        return [
+            SearchResult(
+                key=self._idx_to_key_lookup[idx],
+                score=score,
+            )
+            for idx, score in zip(idxs, scores)
+        ]
 
-    def search_given_text(self, text: str, n: int) -> t.List[str]:
+    def search_given_embs(self, embs: np.ndarray, n: int) -> t.List[t.List[str]]:
+        assert len(embs.shape) == 2, "must be 2 dimensional"
+        embs = normalize(embs, axis=1)
+        _, idxs = self._faiss_index.search(embs, k=n)
+        return [
+            [self._idx_to_key_lookup[idxs[i][j].item()] for j in range(n)]
+            for i in range(len(idxs))
+        ]
+
+    def search_given_text(self, text: str, n: int) -> t.List[SearchResult]:
         """
         Nearest neighbor search given an input text.
         Will encode the text first and then run `search_given_emb`.
         """
-        emb_text = self.get_text_emb(text=text)
+        emb_text = self.get_text_emb(text=text).cpu().numpy()
         return self.search_given_emb(emb=emb_text, n=n)
 
     def show_images_by_key(self, keys: t.List[str]) -> None:
         from IPython.display import Image as JImage, display
 
         for key in keys:
-            path = f"{self.image_path_base}/{key}.png"
+            path = f"{self.image_path_base}/{key}"
             display(JImage(path))
 
     @property
@@ -85,8 +107,8 @@ class CLIPSearch:
         return obj
 
     @functools.lru_cache()
-    def get_text_emb(self, text: str) -> np.ndarray:
-        logger.info("Encoding input text query...")
+    def get_text_emb(self, text: str) -> torch.Tensor:
+        logger.info(f"Encoding input text query: {text} ...")
         with torch.no_grad():
             text = clip.tokenize(text).to(self._device)
             enc = self._clip_model.encode_text(text).squeeze()
@@ -97,7 +119,7 @@ class CLIPSearch:
     @functools.lru_cache()
     def _clip_model(self):
         logger.info("Loading CLIP text encoder...")
-        model, _ = clip.load(config.CLIP_MODEL_TYPE, device=self._device)
+        model, _ = clip.load(config.CLIP_MODEL_TYPE, device=self._device, jit=True)
         logger.info("CLIP loaded!")
         return model
 
@@ -110,7 +132,7 @@ class CLIPSearch:
     @functools.lru_cache()
     def _faiss_index(self):
         p = self.faiss_index_path
-        logger.info(f"Loading faiss index from {p}...")
-        nn = faiss.read_index(p)
-        logger.info(f"faiss index loaded!")
+        print(f"Loading faiss index from {p}...")
+        nn = faiss.read_index(p, faiss.IO_FLAG_MMAP | faiss.IO_FLAG_READ_ONLY)
+        print(f"faiss index loaded!")
         return nn

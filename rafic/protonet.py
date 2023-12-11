@@ -1,6 +1,5 @@
 """Implementation of prototypical networks for Omniglot."""
-# import sys
-# sys.path.append('..')
+
 import argparse
 import os
 
@@ -15,7 +14,7 @@ from torch import nn
 import torch.nn.functional as F  # pylint: disable=unused-import
 from torch.utils import tensorboard
 
-from . import birds_data
+from . import config, data, experiments
 from .evaluation import Evaluation  # pylint: disable=unused-import
 
 NUM_INPUT_CHANNELS = 1
@@ -24,16 +23,22 @@ KERNEL_SIZE = 3
 NUM_CONV_LAYERS = 4
 SUMMARY_INTERVAL = 10
 SAVE_INTERVAL = 100
-PRINT_INTERVAL = 10
-VAL_INTERVAL = PRINT_INTERVAL * 5
+PRINT_INTERVAL = 1
+VAL_INTERVAL = PRINT_INTERVAL * 1
 NUM_TEST_TASKS = 600
+CLIP_EMB_DIM = 768
 
 
 class ProtoNetNetwork(nn.Module):
-    def __init__(self, device):
+    def __init__(
+        self,
+        input_size: int,
+        device,
+        num_hidden_channels: int = NUM_HIDDEN_CHANNELS,
+    ):
         super().__init__()
         layers = [
-            nn.Linear(in_features=768, out_features=NUM_HIDDEN_CHANNELS),
+            nn.Linear(in_features=input_size, out_features=num_hidden_channels),
             nn.ReLU(),
         ]
         self._layers = nn.Sequential(*layers)
@@ -51,12 +56,14 @@ class ProtoNet:
         learning_rate,
         log_dir,
         device,
+        input_size,
         compile=False,
         backend=None,
         learner=None,
         val_interval=None,
         save_interval=None,
         bio=False,
+        num_hidden_channels: int = NUM_HIDDEN_CHANNELS,
     ):
         """Inits ProtoNet.
 
@@ -67,7 +74,11 @@ class ProtoNet:
         """
         self.device = device
         if learner is None:
-            self._network = ProtoNetNetwork(device)
+            self._network = ProtoNetNetwork(
+                input_size=input_size,
+                device=device,
+                num_hidden_channels=num_hidden_channels,
+            )
         else:
             self._network = learner.to(device)
 
@@ -190,11 +201,15 @@ class ProtoNet:
                 )
                 writer.add_scalar("train_accuracy/query", accuracy_query.item(), i_step)
 
-            if i_step % self.val_interval == 0:
+            # if i_step % self.val_interval == 0:
+            if i_step % 10 == 0 or i_step >= MAX_TRAIN - 1:
                 print("Start Validation...")
+                cnt, cnt_correct = 0, 0
                 with torch.no_grad():
                     losses, accuracies_support, accuracies_query = [], [], []
                     for i, val_task_batch in enumerate(dataloader_meta_val):
+                        n = len(val_task_batch[0][0])
+                        cnt += n
                         if self.bio and i > 600:
                             break
                         loss, accuracy_support, accuracy_query = self._step(
@@ -203,10 +218,16 @@ class ProtoNet:
                         losses.append(loss.item())
                         accuracies_support.append(accuracy_support)
                         accuracies_query.append(accuracy_query)
+                        cnt_correct += round(accuracy_query * n)
                     loss = np.mean(losses)
                     accuracy_support = np.mean(accuracies_support)
                     accuracy_query = np.mean(accuracies_query)
-                    ci95 = 1.96 * np.std(accuracies_query) / np.sqrt(600 * 4)
+                    # ci95 = 1.96 * np.std(accuracies_query) / np.sqrt(600 * 4)
+                    ci95 = (
+                        1.96
+                        * np.std(accuracies_query)
+                        / np.sqrt(len(dataloader_meta_val))
+                    )
                 if self.bio:
                     print(
                         f"Validation: "
@@ -220,7 +241,8 @@ class ProtoNet:
                         f"Validation: "
                         f"loss: {loss:.3f}, "
                         f"support accuracy: {accuracy_support:.3f}, "
-                        f"query accuracy: {accuracy_query:.3f}"
+                        f"query accuracy: {accuracy_query:.3f}, "
+                        f"Ci95: {ci95:.3f} [acc: {cnt_correct / cnt:.2f}]",
                     )
                 writer.add_scalar("loss/val", loss, i_step)
                 writer.add_scalar("val_accuracy/support", accuracy_support, i_step)
@@ -236,6 +258,9 @@ class ProtoNet:
         Args:
             dataloader_test (DataLoader): loader for test tasks
         """
+        raise NotImplementedError(
+            "TODO: NUM_TEST_TASKS must be a function of the dataset"
+        )
         accuracies = []
         for i, task_batch in enumerate(dataloader_test):
             accuracies.append(self._step(task_batch)[2])
@@ -310,7 +335,18 @@ def main(args):
     print(f"log_dir: {log_dir}")
     writer = tensorboard.SummaryWriter(log_dir=log_dir)
 
-    protonet = ProtoNet(args.learning_rate, log_dir, DEVICE, args.compile, args.backend)
+    input_size = CLIP_EMB_DIM
+    input_size += 1 if args.append_cos_sim else 0
+    input_size += args.num_way if args.add_class_cos_sims else 0
+    protonet = ProtoNet(
+        learning_rate=args.learning_rate,
+        log_dir=log_dir,
+        device=DEVICE,
+        compile=args.compile,
+        backend=args.backend,
+        num_hidden_channels=args.num_hidden_channels,
+        input_size=input_size,
+    )
 
     if args.checkpoint_step > -1:
         protonet.load(args.checkpoint_step)
@@ -319,36 +355,48 @@ def main(args):
 
     data_set = args.dataset
     if not args.test:
-        num_training_tasks = args.batch_size * (
-            args.num_train_iterations - args.checkpoint_step - 1
-        )
         print(
             f"Training on tasks with composition "
             f"num_way={args.num_way}, "
             f"num_support={args.num_support}, "
             f"num_query={args.num_query}"
         )
-        dataloader_meta_train = birds_data.get_birds_dataloader(
+        dataloader_meta_train = data.get_dataloader(
+            dataset_name=args.dataset_name,
             split="train",
             batch_size=args.batch_size,
             num_way=args.num_way,
             num_support=args.num_support,
             num_query=args.num_query,
-            num_tasks_per_epoch=num_training_tasks,
             num_workers=args.num_workers,
             num_aug=args.num_aug,
-            data_set=data_set
+            aug_combine=args.aug_combine,
+            aug_thr=args.aug_thr,
+            seed=args.seed,
+            aug_by_text=args.aug_by_text,
+            append_cos_sim=args.append_cos_sim,
+            train_repeat_cnt=args.train_repeat_cnt,
+            add_class_cos_sims=args.add_class_cos_sims,
         )
-        dataloader_meta_val = birds_data.get_birds_dataloader(
+        dataloader_meta_val = data.get_dataloader(
+            dataset_name=(
+                data.get_other_dataset(dataset_name=args.dataset_name)
+                if args.cross_eval
+                else args.dataset_name
+            ),
             split="val",
             batch_size=args.batch_size,
             num_way=args.num_way,
             num_support=args.num_support,
             num_query=args.num_query,
-            num_tasks_per_epoch=200,  # was batch_size * 4
             num_workers=args.num_workers,
             num_aug=args.num_aug,
-            data_set=data_set
+            aug_combine=args.aug_combine,
+            aug_thr=args.aug_thr,
+            seed=args.seed,
+            aug_by_text=args.aug_by_text,
+            append_cos_sim=args.append_cos_sim,
+            add_class_cos_sims=args.add_class_cos_sims,
         )
         protonet.train(dataloader_meta_train, dataloader_meta_val, writer)
     else:
@@ -358,16 +406,21 @@ def main(args):
             f"num_support={args.num_support}, "
             f"num_query={args.num_query}"
         )
-        dataloader_test = birds_data.get_birds_dataloader(
+        dataloader_test = data.get_dataloader(
+            dataset_name=args.dataset_name,
             split="test",
             batch_size=1,
             num_way=args.num_way,
             num_support=args.num_support,
             num_query=args.num_query,
-            num_tasks_per_epoch=200,  # was NUM_TEST_TASKS
             num_workers=args.num_workers,
             num_aug=args.num_aug,
-            data_set=data_set
+            aug_combine=args.aug_combine,
+            aug_thr=args.aug_thr,
+            seed=args.seed,
+            aug_by_text=args.aug_by_text,
+            append_cos_sim=args.append_cos_sim,
+            add_class_cos_sims=args.add_class_cos_sims,
         )
         protonet.test(dataloader_test)
 
@@ -375,10 +428,10 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Train a ProtoNet!")
     parser.add_argument(
-        "--log_dir", type=str, default=None, help="directory to save to or load from"
+        "--log_dir", type=str, default="logs", help="directory to save to or load from"
     )
     parser.add_argument(
-        "--num_way", type=int, default=5, help="number of classes in a task"
+        "--num_way", type=int, default=experiments.N, help="number of classes in a task"
     )
     parser.add_argument(
         "--num_support",
@@ -389,7 +442,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num_query",
         type=int,
-        default=15,
+        default=experiments.Q,
         help="number of query examples per class in a task",
     )
     parser.add_argument("--num_aug", type=int, default=0, help="Number of retrievals")
@@ -402,7 +455,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=16,
+        default=experiments.BATCH_SIZE,
         help="number of tasks per outer-loop update",
     )
     parser.add_argument(
@@ -424,7 +477,10 @@ if __name__ == "__main__":
         ),
     )
     parser.add_argument(
-        "--num_workers", type=int, default=2, help=("needed to specify the dataloader")
+        "--num_workers",
+        type=int,
+        default=experiments.NUM_WORKERS,
+        help=("needed to specify the dataloader"),
     )
     parser.add_argument("--compile", action="store_true", default=False)
     parser.add_argument(
@@ -441,18 +497,21 @@ if __name__ == "__main__":
     )
     parser.add_argument("--cache", action="store_true")
     parser.add_argument("--device", type=str, default="cpu")
-
+    parser.add_argument("--dataset_name", type=str, default="birds")
+    parser.add_argument("--aug_thr", type=float, default=None)
+    parser.add_argument("--aug_combine", action="store_true")
+    parser.add_argument("--seed", type=int, default=config.SEED)
+    parser.add_argument("--num_hidden_channels", type=int, default=NUM_HIDDEN_CHANNELS)
+    parser.add_argument("--aug_by_text", type=float, default=0.8)
+    parser.add_argument("--append_cos_sim", action="store_true")
+    parser.add_argument("--train_repeat_cnt", type=float, default=1)
+    parser.add_argument("--add_class_cos_sims", action="store_true")
+    parser.add_argument(
+        "--cross_eval",
+        action="store_true",
+        help="if true, validation is done on the other dataset.",
+    )
     args = parser.parse_args()
-
-    # if args.cache == True:
-    #     # Download Omniglot Dataset
-    #     if not os.path.isdir("./omniglot_resized"):
-    #         gdd.download_file_from_google_drive(
-    #             file_id="1iaSFXIYC3AB8q9K_M-oVMa4pmB7yKMtI",
-    #             dest_path="./omniglot_resized.zip",
-    #             unzip=True,
-    #         )
-    #     assert os.path.isdir("./omniglot_resized")
-    # else:
-
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
     main(args)

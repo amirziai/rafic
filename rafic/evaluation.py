@@ -7,8 +7,6 @@ from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 from sklearn.metrics.pairwise import cosine_similarity
 from tqdm.auto import tqdm
 
-from . import birds_data, search
-
 
 class Evaluation:
     @staticmethod
@@ -91,21 +89,20 @@ class Evaluation:
     def _nn(data):
         x_tr, y_tr, x_ts, y_ts = data
         uniq = sorted(np.unique(y_tr))
-        lookup = {cls: idx for idx, cls in enumerate(uniq)}
-        lookup_rev = list(lookup.keys())
-        labels = torch.tensor([lookup[a.item()] for a in y_tr])
         centroids = np.vstack(
-            [x_tr[labels == i].mean(axis=0).numpy() for i in range(len(uniq))]
+            [x_tr[y_tr == i].mean(axis=0).cpu().numpy() for i in range(len(uniq))]
         )
-        ps = cosine_similarity(x_ts.numpy(), centroids).argmax(axis=0)
-        correct = np.sum([y.item() == lookup_rev[p] for y, p in zip(y_ts, ps)])
+        ps = cosine_similarity(x_ts.cpu().numpy(), centroids).argmax(axis=1)
+        assert len(y_ts) == len(ps)
+        correct = np.sum([y.item() == p for y, p in zip(y_ts, ps)])
         return correct, len(ps)
 
     @staticmethod
     def _rand(data):
-        # TODO: only works with Q=1
         _, _, _, y_ts = data
-        ps = np.random.choice(np.unique(y_ts), len(y_ts), replace=False)
+        uniq = np.unique(y_ts)
+        # this approach doesn't know that we have exactly Q labels from each class
+        ps = np.random.choice(uniq, len(y_ts), replace=True)
         correct = np.sum(y_ts.numpy() == ps)
         return correct, len(ps)
 
@@ -126,9 +123,8 @@ class Evaluation:
 
     @staticmethod
     def eval_text_encoder(dl):
-        cs = search.CLIPSearch()
-        i2l = birds_data.get_class_index_to_label()
-
+        assert dl.dataset.use_global_labels
+        ds = dl.dataset
         correct = 0
         tot = 0
 
@@ -141,9 +137,10 @@ class Evaluation:
                 ys = sorted(ys)
                 y2i = {y: i for i, y in enumerate(ys)}
                 embs_text = np.vstack(
-                    [cs.get_text_emb(f"a photo of a {i2l[y]} bird") for y in ys]
+                    [ds.get_class_text_emb(class_global_idx=y) for y in ys]
                 )
-                ps = cosine_similarity(x_ts.numpy(), embs_text).argmax(axis=1)
+                ps = cosine_similarity(x_ts.cpu().numpy(), embs_text).argmax(axis=1)
+                assert len(ps) == len(y_ts)
                 correct += sum(y2i[y.item()] == p for y, p in zip(y_ts, ps))
 
         return correct / tot
